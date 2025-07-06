@@ -1,7 +1,12 @@
-from fastapi import APIRouter
+from typing import Annotated
+from fastapi import APIRouter, File, UploadFile
 
 router = APIRouter()
 
-@router.get("/files")
-def get_files():
-    return {"hi":"are you there?"}
+@app.post("/files/")
+async def create_file(file: Annotated[bytes, File()]):
+    return {"file_size": len(file)}
+
+@router.post("/uploadfile/")
+async def create_upload_file(file: UploadFile):
+    return {"filename": file.filename}

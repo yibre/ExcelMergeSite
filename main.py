@@ -1,9 +1,11 @@
 from typing import Optional
 import uvicorn
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI
 import routers.api as api
 
 app = FastAPI()
+
+templates = Jinja2Templates(directory="templates")
 
 # router 추가
 app.include_router(api.router)
