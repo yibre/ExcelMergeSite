@@ -1,10 +1,12 @@
+<!-- templates/base.html -->
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- The title block can be overridden by child templates -->
+    <title>{% block title %}My Awesome Site{% endblock %}</title>
+    <!-- Using Tailwind CSS for simple styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Simple styles for the navigation */
@@ -17,6 +19,31 @@
             color: #3b82f6; /* Tailwind's blue-500 */
         }
     </style>
-  </head>
-  <body></body>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <header class="bg-white shadow-md">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="/" class="text-2xl font-bold text-gray-800">FastAPI App</a>
+            <div class="space-x-8">
+                <a href="/" class="nav-link text-gray-600 font-semibold">Home</a>
+                <a href="/about" class="nav-link text-gray-600 font-semibold">About</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-6 py-12">
+        <!-- This is the main content block. Child templates will inject their content here. -->
+        {% block content %}
+        <p>This is the default content if a child template doesn't provide any.</p>
+        {% endblock %}
+    </main>
+
+    <footer class="bg-white mt-12 py-6">
+        <div class="container mx-auto text-center text-gray-500">
+            <p>&copy; 2025 My Awesome Site. All rights reserved.</p>
+        </div>
+    </footer>
+
+</body>
 </html>
