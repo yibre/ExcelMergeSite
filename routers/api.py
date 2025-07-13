@@ -23,5 +23,26 @@ async def read_root(request: Request):
 
 
 @router.get("/main", response_class=HTMLResponse)
-async def read_home(request : Request):
+async def main_page(request : Request):
+    """
+    메인 페이지 렌더링용
+    메인화면 : 파일 합치는 표
+    """
+     # List all files in the uploads directory
+    try:
+        files = os.listdir(UPLOADS_DIR)
+    except OSError:
+        files = []
+        
+    context = {
+        "request": request,
+        "title": "Home Page - File Uploader",
+        "message": "Upload your Excel file below. All uploaded files are available for download by any user.",
+        "files": files
+    }
+    return templates.TemplateResponse("home.html", context)
+
+
+@router.post("/upload", response_class=HTMLResponse)
+async def handle_upload(file: UploadFile = File(...)):
     pass
