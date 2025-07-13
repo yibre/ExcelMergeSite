@@ -11,8 +11,8 @@ pip install Jinja2
 pip install python-multipart
 
 # run server
-in windows: python main.py (uvicorn needed to be installed)
-in ios: uvicorn main:app --host 0.0.0.0 --port 80
+in windows: python main.py (uvicorn needed to be installed)  
+in ios: uvicorn main:app --host 0.0.0.0 --port 80  
 
 # 불필요한 메모용 <- 파일 transfer 프로그램
 pip install PyQt5  

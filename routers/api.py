@@ -69,5 +69,32 @@ async def handle_download(filename: str):
     if os.path.exists(file_path):
         return FileResponse(path=file_path, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=filename)
     
-    # If file not found, you could return an error or redirect
+    # 없는 파일을 다운받으려고 할 때 : 404
     return HTMLResponse(content="File not found.", status_code=404)
+
+@router.get("/delete/{filename}", response_class=FileResponse)
+async def handle_delete(filename: str):
+    """
+    파일 옆 x 버튼 누르면 해당 파일 삭제 가능
+    upload 파일에 있는 내용을 알아서 삭제함
+    """
+    file_path = os.path.join(UPLOADS_DIR, filename)
+    
+    # path traversal을 통한 해킹 방지
+    if ".." in filename or filename.startswith("/"):
+        return HTMLResponse(content="Invalid filename.", status_code=400)
+
+    # 파일 존재 유무 확인
+    if os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+        except OSError as e:
+            # 에러 디텍션용 로깅
+            print(f"Error deleting file {filename}: {e}")
+
+    # 업데이트 리스트가 있는 메인 페이지로 돌아옴
+    return RedirectResponse(url="/main", status_code=303)
+
+@router.get("/merge", response_class=FileResponse)
+async def merge_files():
+    pass
