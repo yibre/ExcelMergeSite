@@ -7,7 +7,9 @@ from fastapi.staticfiles import StaticFiles
 app = FastAPI()
 
 templates = Jinja2Templates(directory="templates")
-app.mount("/static", StaticFiles(directory="static"), name="static") # CSS 파일용
+
+# css, js용
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # router 추가
 app.include_router(api.router)
