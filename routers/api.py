@@ -1,5 +1,6 @@
 import os
 import shutil
+import openpyxl
 
 from typing import Annotated
 from fastapi.templating import Jinja2Templates
@@ -12,6 +13,12 @@ templates = Jinja2Templates(directory="templates")
 
 # Configuration
 UPLOADS_DIR = "uploads"
+TEMPLATE_FILENAME = "template.xlsx" # For the original merge function
+MASTER_MERGE_FILENAME = "merge.xlsx" # The master file for the new split function
+
+# Create the uploads directory if it doesn't exist
+os.makedirs(UPLOADS_DIR, exist_ok=True)
+
 
 # Upload directory가 없으면 만들기
 os.makedirs(UPLOADS_DIR, exist_ok=True)
@@ -28,7 +35,6 @@ async def main_page(request : Request):
     메인 페이지 렌더링용
     메인화면 : 파일 합치는 표
     """
-     # List all files in the uploads directory
     try:
         files = os.listdir(UPLOADS_DIR)
     except OSError:
@@ -38,7 +44,9 @@ async def main_page(request : Request):
         "request": request,
         "title": "Home Page - File Uploader",
         "message": "Upload your Excel file below. All uploaded files are available for download by any user.",
-        "files": files
+        "files": files,
+        "template_filename": TEMPLATE_FILENAME,
+        "master_merge_filename": MASTER_MERGE_FILENAME
     }
     return templates.TemplateResponse("home.html", context)
 
