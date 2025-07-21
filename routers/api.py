@@ -1,128 +1,88 @@
+# main.py
+# To run this application:
+# 1. Install the necessary libraries:
+#    pip install fastapi "uvicorn[standard]" jinja2 python-multipart openpyxl
+# 2. Create directories named "templates" and "uploads" in the same folder as this file.
+# 3. Place base.html, home.html, and about.html inside the "templates" directory.
+# 4. Run the server from your terminal:
+#    uvicorn main:app --reload
+
 import os
 import shutil
 import openpyxl
-
-from typing import Optional
+from fastapi import FastAPI, Request, UploadFile, File, APIRouter
+from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from fastapi import APIRouter, File, UploadFile, Request, Query
-from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
-# API router 세팅 및 html template 연결
+# --- Configuration ---
+UPLOADS_DIR = "uploads"
+TEMPLATE_FILENAME = "template.xlsx"
+MASTER_MERGE_FILENAME = "merge.xlsx"
+
+os.makedirs(UPLOADS_DIR, exist_ok=True)
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 router.mount("/static", StaticFiles(directory="static"), name="static")
 
-# --- Configuration ---
-UPLOADS_DIR = "uploads"
-VERSIONS = ["ver1", "ver2"]
-TEMPLATE_FILENAME = "template.xlsx"
-MASTER_FILENAME = "master.xlsx" 
-
-# Upload directory가 없으면 만들기 & 버전별로 다르게 짜기
-os.makedirs(UPLOADS_DIR, exist_ok=True)
-for version in VERSIONS:
-    os.makedirs(os.path.join(UPLOADS_DIR, version), exist_ok=True)
-
-
-def get_version_dir(version: str):
-    """버전별로 다른 기능 제공"""
-    return os.path.join(UPLOADS_DIR, version)
-
-
-# request는 Jinja2에서 늘 들어가야함
-@router.get("/test", response_class=HTMLResponse)
-async def read_root(request: Request):
-    return templates.TemplateResponse("world.html", {"request": request, "message": "Hello, World!"})
-
-
 @router.get("/", response_class=HTMLResponse)
-async def main_page(request : Request, version: Optional[str] = Query("ver1")):
+async def read_home(request: Request):
     """
-    메인 페이지 렌더링용
-    메인화면 : 파일 합치는 표
+    This endpoint serves the home page.
+    It now separates the template file from the data files for display.
     """
-    if version not in VERSIONS:
-        version = "ver1" # Default to ver1 if an invalid version is passed
-    
-    version_dir = get_version_dir(version)
     try:
-        all_files = os.listdir(version_dir)
+        all_files = os.listdir(UPLOADS_DIR)
         template_file = TEMPLATE_FILENAME if TEMPLATE_FILENAME in all_files else None
-        master_file = MASTER_FILENAME if MASTER_FILENAME in all_files else None
-        data_files = [f for f in all_files if f not in [TEMPLATE_FILENAME, MASTER_FILENAME]]
+        data_files = [f for f in all_files if f != TEMPLATE_FILENAME]
     except OSError:
         template_file = None
-        master_file = None
         data_files = []
         
     context = {
         "request": request,
-        "title": f"File Manager - {version.upper()}",
-        "versions": VERSIONS,
-        "current_version": version,
+        "title": "Home Page - File Uploader",
+        "message": "Upload data files below. Use the dedicated button for the template.",
         "template_file": template_file,
-        "master_file": master_file,
         "data_files": data_files,
-        "master_filename_const": MASTER_FILENAME
+        "master_merge_filename": MASTER_MERGE_FILENAME
     }
     return templates.TemplateResponse("home.html", context)
 
-
-
-@router.post("/upload_template/{version}", response_class=RedirectResponse)
-async def handle_upload_template(version:str, file: UploadFile = File(...)):
+@router.post("/upload_template", response_class=RedirectResponse)
+async def handle_upload_template(file: UploadFile = File(...)):
     """
-    template.xlsx 올리는 기능
-    이 버튼을 통해 올린 것은 template.xlsx로만 저장됨
+    NEW: Dedicated endpoint for uploading the template.xlsx file.
+    It will always be saved as 'template.xlsx'.
     """
-    file_path = os.path.join(get_version_dir(version), TEMPLATE_FILENAME)
+    file_path = os.path.join(UPLOADS_DIR, TEMPLATE_FILENAME)
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-    return RedirectResponse(url=f"/?version={version}", status_code=303)
+    return RedirectResponse(url="/", status_code=303)
 
-@router.post("/upload_master/{version}", response_class=RedirectResponse)
-async def handle_upload_master(version: str, file: UploadFile = File(...)):
-    file_path = os.path.join(get_version_dir(version), MASTER_FILENAME)
+@router.post("/upload", response_class=RedirectResponse)
+async def handle_upload(file: UploadFile = File(...)):
+    """
+    This endpoint handles the data file uploads.
+    """
+    file_path = os.path.join(UPLOADS_DIR, file.filename)
+    # Prevent overwriting the template with a data file of the same name
+    if file.filename == TEMPLATE_FILENAME:
+        return HTMLResponse(content="Cannot upload a data file with the name 'template.xlsx'. Please use the dedicated template upload button.", status_code=400)
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-    return RedirectResponse(url=f"/?version={version}", status_code=303)
+    return RedirectResponse(url="/", status_code=303)
 
-
-
-@router.post("/upload/{version}", response_class=RedirectResponse)
-async def handle_upload(version: str, file: UploadFile = File(...)):
-    """
-    파일 업로드 관리
-    업로드한 파일을 프로젝트 내 /uploads 디렉터리에 보관
-    """
-    file_path = os.path.join(get_version_dir(version), file.filename)
-    if file.filename in [TEMPLATE_FILENAME, MASTER_FILENAME]:
-        return HTMLResponse(content=f"Cannot upload a data file with a reserved name. Please use the dedicated upload buttons.", status_code=400)
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    return RedirectResponse(url=f"/?version={version}", status_code=303)
-
-
-@router.get("/download/{version}/{filename}", response_class=FileResponse)
-async def handle_download(version: str, filename: str):
-    """
-    파일 옆 다운로드 버튼 누르면 다운로드됨
-    """
-    file_path = os.path.join(get_version_dir(version), filename)
+@router.get("/download/{filename}", response_class=FileResponse)
+async def handle_download(filename: str):
+    file_path = os.path.join(UPLOADS_DIR, filename)
     if os.path.exists(file_path):
-        return FileResponse(path=file_path, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=filename)
+        return FileResponse(path=file_path, media_type='routerlication/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=filename)
     return HTMLResponse(content="File not found.", status_code=404)
 
-
-
-@router.get("/delete/{version}/{filename}", response_class=RedirectResponse)
-async def handle_delete(version: str, filename: str):
-    """
-    파일 옆 x 버튼 누르면 해당 파일 삭제 가능
-    upload 파일에 있는 내용을 알아서 삭제함
-    """
-    file_path = os.path.join(get_version_dir(version), filename)
+@router.get("/delete/{filename}", response_class=RedirectResponse)
+async def handle_delete(filename: str):
+    file_path = os.path.join(UPLOADS_DIR, filename)
     if ".." in filename or filename.startswith("/"):
         return HTMLResponse(content="Invalid filename.", status_code=400)
     if os.path.exists(file_path):
@@ -130,14 +90,13 @@ async def handle_delete(version: str, filename: str):
             os.remove(file_path)
         except OSError as e:
             print(f"Error deleting file {filename}: {e}")
-    return RedirectResponse(url=f"/?version={version}", status_code=303)
-
-
+    return RedirectResponse(url="/", status_code=303)
 
 @router.get("/merge", response_class=FileResponse)
-async def merge_files():
+async def handle_merge():
     """
-    엑셀 파일을 template 파일에 합치기
+    UPDATED: This endpoint now dynamically finds the header in each data file
+    by comparing it to the template's header.
     """
     template_path = os.path.join(UPLOADS_DIR, TEMPLATE_FILENAME)
     output_filename = "merged_output.xlsx"
@@ -175,19 +134,13 @@ async def merge_files():
     merged_wb.save(output_path)
     return FileResponse(path=output_path, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=output_filename)
 
-
-
-@router.get("/download_my_data/{version}/{original_filename}")
-async def download_my_data(version: str, original_filename: str):
-    """
-    마스터 파일 올리면 분할 후 다시 다운로드 시작
-    """
-    version_dir = get_version_dir(version)
-    master_path = os.path.join(version_dir, MASTER_FILENAME)
-    user_file_path = os.path.join(version_dir, original_filename)
+@router.get("/download_my_data/{original_filename}")
+async def download_my_data(original_filename: str):
+    master_path = os.path.join(UPLOADS_DIR, MASTER_MERGE_FILENAME)
+    user_file_path = os.path.join(UPLOADS_DIR, original_filename)
 
     if not os.path.exists(master_path):
-        return HTMLResponse(content=f"Master file '{MASTER_FILENAME}' not found. Please upload it first.", status_code=404)
+        return HTMLResponse(content=f"Master file '{MASTER_MERGE_FILENAME}' not found. Please upload it.", status_code=404)
     if not os.path.exists(user_file_path):
         return HTMLResponse(content=f"Original user file '{original_filename}' not found.", status_code=404)
 
@@ -211,7 +164,7 @@ async def download_my_data(version: str, original_filename: str):
                 filtered_ws.append(row)
         
         output_filename = f"filtered_for_{key_value}.xlsx"
-        output_path = os.path.join(version_dir, output_filename)
+        output_path = os.path.join(UPLOADS_DIR, output_filename)
         filtered_wb.save(output_path)
 
         return FileResponse(path=output_path, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=output_filename)
@@ -219,3 +172,12 @@ async def download_my_data(version: str, original_filename: str):
     except Exception as e:
         print(f"An error occurred: {e}")
         return HTMLResponse(content=f"An error occurred during processing: {e}", status_code=500)
+
+@router.get("/about", response_class=HTMLResponse)
+async def read_about(request: Request):
+    context = {
+        "request": request,
+        "title": "About Us",
+        "description": "This is a page explaining what our site is about."
+    }
+    return templates.TemplateResponse("about.html", context)

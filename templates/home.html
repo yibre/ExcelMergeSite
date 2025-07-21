@@ -82,7 +82,7 @@
                 <li class="flex items-center justify-between bg-gray-50 p-3 rounded-md hover:bg-gray-100">
                     <span class="font-mono text-gray-700 truncate pr-2">{{ file }}</span>
                     <div class="flex items-center space-x-2 flex-shrink-0">
-                        <a href="/download_my_data/?version=ver1/{{ file }}" class="px-3 py-1 bg-teal-500 text-white text-sm font-semibold rounded-full hover:bg-teal-600" title="Download My Data from '{{ master_merge_filename }}'">My Data</a>
+                        <a href="/download_my_data/{{ file }}" class="px-3 py-1 bg-teal-500 text-white text-sm font-semibold rounded-full hover:bg-teal-600" title="Download My Data from '{{ master_merge_filename }}'">My Data</a>
                         <a href="/download/{{ file }}" class="px-3 py-1 bg-green-500 text-white text-sm font-semibold rounded-full hover:bg-green-600">DL</a>
                         <a href="/delete/{{ file }}" class="px-3 py-1 bg-red-500 text-white text-sm font-semibold rounded-full hover:bg-red-600" onclick="return confirm('Are you sure you want to delete this file?');">Del</a>
                     </div>
