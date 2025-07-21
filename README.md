@@ -8,7 +8,8 @@ This website is for merging excel files automatically. I made it with FastAPI, o
 pip install uvicorn  
 pip install fastapi  
 pip install Jinja2  
-pip install python-multipart
+pip install python-multipart  
+pip install openpyxl  
 
 # run server
 in windows: python main.py (uvicorn needed to be installed)  

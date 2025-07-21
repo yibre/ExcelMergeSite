@@ -14,10 +14,6 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # router 추가
 app.include_router(api.router)
 
-@app.get("/")
-def read_root():
-    return { "Hello" : "World" }
-
 
 # run server by 'python main.py' in windows
 if __name__ == '__main__':
