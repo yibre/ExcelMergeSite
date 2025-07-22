@@ -1,3 +1,10 @@
+<!--
+
+template.html 업로드 가능 & 해당 파일 기반으로 merge 가능
+글로벌 서비스용
+
+-->
+
 <!-- templates/home.html -->
 {% extends "base.html" %}
 
@@ -6,7 +13,46 @@
 
 <!-- Override the content block from base.html -->
 {% block content %}
-<div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+<div class="space-y-12">
+
+    <!-- Template Upload and Management Section -->
+    <div class="bg-white p-8 rounded-lg shadow-lg">
+        <h1 class="text-3xl font-bold mb-4">Template Management</h1>
+        <p class="text-gray-600 mb-6">Upload the master `template.xlsx` file here. It will be used as the base for merging files.</p>
+        
+        <form action="/upload_template" method="post" enctype="multipart/form-data" class="mb-6 p-4 border-2 border-dashed rounded-lg">
+            <div class="mb-2">
+                <label for="template_file" class="block text-gray-700 text-sm font-bold mb-2">Select Template File (must be named template.xlsx):</label>
+                <input type="file" name="file" id="template_file" required
+                       class="block w-full text-sm text-gray-500
+                              file:mr-4 file:py-2 file:px-4
+                              file:rounded-full file:border-0
+                              file:text-sm file:font-semibold
+                              file:bg-purple-50 file:text-purple-700
+                              hover:file:bg-purple-100"
+                       accept=".xlsx">
+            </div>
+            <button type="submit"
+                    class="w-full px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700 transition-colors">
+                Upload Template
+            </button>
+        </form>
+
+        {% if template_file %}
+            <h2 class="text-xl font-semibold mb-2">Current Template:</h2>
+            <ul class="space-y-3">
+                <li class="flex items-center justify-between bg-purple-50 p-3 rounded-md">
+                    <span class="font-mono font-bold text-purple-800">{{ template_file }}</span>
+                    <div class="flex items-center space-x-2 flex-shrink-0">
+                        <a href="/download/{{ template_file }}" class="px-3 py-1 bg-green-500 text-white text-sm font-semibold rounded-full hover:bg-green-600">DL</a>
+                        <a href="/delete/{{ template_file }}" class="px-3 py-1 bg-red-500 text-white text-sm font-semibold rounded-full hover:bg-red-600" onclick="return confirm('Are you sure you want to delete the template?');">Del</a>
+                    </div>
+                </li>
+            </ul>
+        {% else %}
+            <p class="text-center text-gray-500 font-semibold">No template uploaded yet.</p>
+        {% endif %}
+    </div>
 
     <!-- Data Files Upload and Management Section -->
     <div class="bg-white p-8 rounded-lg shadow-lg">
@@ -54,17 +100,6 @@
             <p class="text-center text-gray-500">No data files have been uploaded yet.</p>
         {% endif %}
     </div>
-
-    <!-- Data Files Upload and Management Section -->
-    <div class="bg-white p-8 rounded-lg shadow-lg">
-        <div class="flex justify-between items-center mb-4">
-            <h1 class="text-3xl font-bold">Data Files</h1>
-            <a href="/merge" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors whitespace-nowrap">
-                Merge All Data Files
-            </a>
-        </div>
-    </div>
-
 
 </div>
 {% endblock %}
