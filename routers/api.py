@@ -18,9 +18,13 @@ from fastapi.staticfiles import StaticFiles
 # --- Configuration ---
 UPLOADS_DIR = "uploads"
 TEMPLATE_FILENAME = "template.xlsx"
-MASTER_MERGE_FILENAME = "merge.xlsx"
+MASTER_MERGE_FILENAME = "master.xlsx"
+VERSIONS = ["ver1", "ver2"]
 
 os.makedirs(UPLOADS_DIR, exist_ok=True)
+for version in VERSIONS:
+    os.makedirs(os.path.join(UPLOADS_DIR, version), exist_ok=True)
+
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 router.mount("/static", StaticFiles(directory="static"), name="static")
@@ -73,12 +77,16 @@ async def handle_upload(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, buffer)
     return RedirectResponse(url="/", status_code=303)
 
+
+
 @router.get("/download/{filename}", response_class=FileResponse)
 async def handle_download(filename: str):
     file_path = os.path.join(UPLOADS_DIR, filename)
     if os.path.exists(file_path):
         return FileResponse(path=file_path, media_type='routerlication/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=filename)
     return HTMLResponse(content="File not found.", status_code=404)
+
+
 
 @router.get("/delete/{filename}", response_class=RedirectResponse)
 async def handle_delete(filename: str):
@@ -91,6 +99,8 @@ async def handle_delete(filename: str):
         except OSError as e:
             print(f"Error deleting file {filename}: {e}")
     return RedirectResponse(url="/", status_code=303)
+
+
 
 @router.get("/merge", response_class=FileResponse)
 async def handle_merge():
@@ -108,8 +118,8 @@ async def handle_merge():
     # Load the template and get its header
     merged_wb = openpyxl.load_workbook(template_path)
     merged_ws = merged_wb.active
-    template_header = [cell.value for cell in merged_ws[1]]
-
+    template_header = [cell.value for cell in merged_ws[5]]
+    
     files_to_merge = [f for f in os.listdir(UPLOADS_DIR) if f.endswith('.xlsx') and f not in [TEMPLATE_FILENAME, output_filename, MASTER_MERGE_FILENAME]]
 
     for filename in files_to_merge:
@@ -147,7 +157,8 @@ async def download_my_data(original_filename: str):
     try:
         user_wb = openpyxl.load_workbook(user_file_path)
         user_ws = user_wb.active
-        key_value = user_ws['B2'].value
+        key_value = user_ws['B6'].value
+        print("키밸류: "+ key_value)
         if key_value is None:
             return HTMLResponse(content=f"Could not find a key value in cell B2 of '{original_filename}'.", status_code=400)
 
