@@ -118,7 +118,7 @@ async def handle_merge():
     # Load the template and get its header
     merged_wb = openpyxl.load_workbook(template_path)
     merged_ws = merged_wb.active
-    template_header = [cell.value for cell in merged_ws[5]]
+    template_header = [cell.value for cell in merged_ws[4]]
     
     files_to_merge = [f for f in os.listdir(UPLOADS_DIR) if f.endswith('.xlsx') and f not in [TEMPLATE_FILENAME, output_filename, MASTER_MERGE_FILENAME]]
 
@@ -157,20 +157,23 @@ async def download_my_data(original_filename: str):
     try:
         user_wb = openpyxl.load_workbook(user_file_path)
         user_ws = user_wb.active
-        key_value = user_ws['B6'].value
-        print("키밸류: "+ key_value)
+        key_value = user_ws['B5'].value
         if key_value is None:
-            return HTMLResponse(content=f"Could not find a key value in cell B2 of '{original_filename}'.", status_code=400)
+            return HTMLResponse(content=f"Could not find a key value in cell B6 of '{original_filename}'.", status_code=400)
 
         filtered_wb = openpyxl.Workbook()
         filtered_ws = filtered_wb.active
         
         master_wb = openpyxl.load_workbook(master_path)
         master_ws = master_wb.active
-        header = [cell.value for cell in master_ws[1]]
+        header = [cell.value for cell in master_ws[4]]
+        for h in header:
+            print(h)
         filtered_ws.append(header)
 
+        print('-----------------------------------')
         for row in master_ws.iter_rows(min_row=2, values_only=True):
+            print(row)
             if len(row) > 1 and row[1] == key_value:
                 filtered_ws.append(row)
         
@@ -183,6 +186,70 @@ async def download_my_data(original_filename: str):
     except Exception as e:
         print(f"An error occurred: {e}")
         return HTMLResponse(content=f"An error occurred during processing: {e}", status_code=500)
+    
+
+def search_key_in_excel(file: UploadFile, key_value: str) -> list[list[any]]:
+    """
+    업로드된 엑셀 파일의 두 번째 열(B열)에서 key_value와 일치하는 모든 행을 찾습니다.
+
+    Args:
+        file (UploadFile): 사용자가 업로드한 엑셀 파일.
+        key_value (str): 검색할 키 값.
+
+    Returns:
+        List[List[Any]]: 키 값과 일치하는 모든 행의 데이터 리스트.
+    """
+    matching_rows = []
+    try:
+        # 업로드된 파일을 메모리에서 직접 로드
+        workbook = openpyxl.load_workbook(file.file)
+        sheet = workbook.active
+
+        # 헤더를 제외하고 두 번째 행부터 순회
+        # values_only=True로 설정하면 셀 객체가 아닌 값의 튜플을 바로 얻을 수 있어 편리합니다.
+        for row in sheet.iter_rows(min_row=2, values_only=True):
+            # 행에 데이터가 있고, 두 번째 열이 존재하는지 확인
+            if len(row) > 1 and row[1] is not None:
+                # 두 번째 열(인덱스 1)의 값을 문자열로 변환하여 비교
+                if str(row[1]).strip() == str(key_value).strip():
+                    # 빈 셀(None)은 빈 문자열로 변환하여 추가
+                    clean_row = ["" if cell is None else cell for cell in row]
+                    matching_rows.append(clean_row)
+
+    except Exception as e:
+        # 파일 처리 중 오류 발생 시 예외 처리
+        raise HTTPException(status_code=400, detail=f"'{file.filename}' 파일 처리 중 오류 발생: {e}")
+
+    return matching_rows
+    
+@router.post("/serach/", summary="key로 행 값 검색")
+async def search_rows_by_key(
+    key: str,
+    file1: UploadFile = File(..., description="첫 번째 엑셀 파일 (.xlsx)"),
+    file2: UploadFile = File(..., description="두 번째 엑셀 파일 (.xlsx)")
+    ):
+    """
+    두 개의 엑셀 파일을 업로드받아, 각 파일의 **두 번째 열**에서 주어진 `key` 값과
+    일치하는 모든 행을 찾아 반환합니다.
+
+    - **key**: 검색할 값 (예: 14)
+    - **file1**: 검색 대상 첫 번째 엑셀 파일
+    - **file2**: 검색 대상 두 번째 엑셀 파일
+    """
+    # 각 파일에 대해 검색 함수 호출
+    results_from_file1 = search_key_in_excel(file1, key)
+    results_from_file2 = search_key_in_excel(file2, key)
+
+    return {
+        "search_key": key,
+        "results": {
+            file1.filename: results_from_file1,
+            file2.filename: results_from_file2
+        }
+    }
+
+
+
 
 @router.get("/about", response_class=HTMLResponse)
 async def read_about(request: Request):
