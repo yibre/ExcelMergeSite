@@ -1,16 +1,7 @@
-# main.py
-# To run this application:
-# 1. Install the necessary libraries:
-#    pip install fastapi "uvicorn[standard]" jinja2 python-multipart openpyxl
-# 2. Create directories named "templates" and "uploads" in the same folder as this file.
-# 3. Place base.html, home.html, and about.html inside the "templates" directory.
-# 4. Run the server from your terminal:
-#    uvicorn main:app --reload
-
 import os
 import shutil
 import openpyxl
-from fastapi import FastAPI, Request, UploadFile, File, APIRouter
+from fastapi import Request, UploadFile, File, APIRouter, Query
 from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -29,6 +20,9 @@ router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 router.mount("/static", StaticFiles(directory="static"), name="static")
 
+# 검색 결과 global 함수화
+
+
 @router.get("/", response_class=HTMLResponse)
 async def read_home(request: Request):
     """
@@ -37,9 +31,12 @@ async def read_home(request: Request):
     """
     try:
         all_files = os.listdir(UPLOADS_DIR)
-        template_file = TEMPLATE_FILENAME if TEMPLATE_FILENAME in all_files else None
-        data_files = [f for f in all_files if f != TEMPLATE_FILENAME]
+        files1 = os.listdir(UPLOADS_DIR+"/ver1")
+        files2 = os.listdir(UPLOADS_DIR+"/ver2")
+        template_file = TEMPLATE_FILENAME if TEMPLATE_FILENAME in files1 else None
+        data_files = [f for f in files1 if f != TEMPLATE_FILENAME]
     except OSError:
+        print("os error occured")
         template_file = None
         data_files = []
         
@@ -53,6 +50,7 @@ async def read_home(request: Request):
     }
     return templates.TemplateResponse("home.html", context)
 
+
 @router.post("/upload_template", response_class=RedirectResponse)
 async def handle_upload_template(file: UploadFile = File(...)):
     """
@@ -63,6 +61,7 @@ async def handle_upload_template(file: UploadFile = File(...)):
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     return RedirectResponse(url="/", status_code=303)
+
 
 @router.post("/upload", response_class=RedirectResponse)
 async def handle_upload(file: UploadFile = File(...)):
@@ -144,6 +143,8 @@ async def handle_merge():
     merged_wb.save(output_path)
     return FileResponse(path=output_path, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=output_filename)
 
+
+## 현재 안 쓰는 코드
 @router.get("/download_my_data/{original_filename}")
 async def download_my_data(original_filename: str):
     master_path = os.path.join(UPLOADS_DIR, MASTER_MERGE_FILENAME)
@@ -222,11 +223,23 @@ def search_key_in_excel(key_value: str) -> list[list[any]]:
     return matching_rows
 
 
-@router.get("/serach/", summary="key로 행 값 검색")
+def get_cell_styles(cell):
+    """
+    셀 객체에서 CSS 스타일 추출
+    """
+    styles=[]
+    if cell.fill.fgColor.rgb:
+        #openpyxl의 ARGB 형식에서 RGB만 추출해 CSS hex 코드로 변환
+        bg_color = f"#{cell.fill.fgColor.rgb[2:]}" if len(cell.fill.fgColor.rgb) == 8 else f"#{cell.fill.fgColor.rgb}"
+        styles.append(f"background-color: {bg_color};")
+
+    return " ".json(styles)
+
+
+@router.get("/search/", summary="key로 행 값 검색", response_class=HTMLResponse)
 async def search_rows_by_key(
     key: int = Query(..., description="The integer value to search for")
     ):
-    print(key)
     """
     두 개의 엑셀 파일을 업로드받아, 각 파일의 **두 번째 열**에서 주어진 `key` 값과
     일치하는 모든 행을 찾아 반환합니다.
@@ -240,15 +253,14 @@ async def search_rows_by_key(
     # 각 파일에 대해 검색 함수 호출
     # results_from_file1 = search_key_in_excel(file1, key)
     results_from_file2 = search_key_in_excel(key)
+    print(results_from_file2)
 
-    return {
-        "search_key": key,
-        "results": {
-            file2.filename: results_from_file2
-        }
+    context = {
+        "key": key,
+        "hi": "hithere",
     }
 
-
+    return templates.TemplateResponse("search.html", context)
 
 
 @router.get("/about", response_class=HTMLResponse)

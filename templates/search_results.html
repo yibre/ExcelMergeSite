@@ -1,0 +1,17 @@
+<!-- templates/home.html -->
+{% extends "base.html" %}
+
+<!-- Override the title block from base.html -->
+{% block title %}{{ title }}{% endblock %}
+
+<!-- Override the content block from base.html -->
+{% block content %}
+
+        {% if table_data %}
+        <div id="search-results-container" class="mt-6 hidden">
+            <h3 class="text-xl font-semibold mb-2">결과:</h3>
+            <pre id="search-results" class="bg-gray-900 text-white p-4 rounded-lg text-sm overflow-x-auto"></pre>
+        </div>
+        {% endif %}
+
+{% endblock %}
