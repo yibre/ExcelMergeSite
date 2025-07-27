@@ -6,9 +6,80 @@
 
 <!-- Override the content block from base.html -->
 {% block content %}
+
+
+    <!-- NEW: Search Section -->
+    <div class="mb-8 bg-white p-6 rounded-lg shadow-lg">
+        <form id="search-form">
+            <div class="flex items-center space-x-4">
+                <input type="number" id="search-input" name="key" placeholder="안건 번호로 결과 찾기 (e.g. 1104)" required
+                       class="block w-full px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button type="submit"
+                        class="px-6 py-2 bg-gray-800 text-white font-semibold rounded-lg shadow-md hover:bg-gray-900 transition-colors whitespace-nowrap">
+                    Search
+                </button>
+            </div>
+        </form>
+        <!-- Div to display search results -->
+        <div id="search-results-container" class="mt-6 hidden">
+            <h3 class="text-xl font-semibold mb-2">Search Results:</h3>
+            <pre id="search-results" class="bg-gray-900 text-white p-4 rounded-lg text-sm overflow-x-auto"></pre>
+        </div>
+    </div>
+
+
 <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
 
-    <!-- Data Files Upload and Management Section -->
+    <!-- Ver 1용 업로드 링크 -->
+    <div class="bg-white p-8 rounded-lg shadow-lg">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-3xl font-bold">R1.0</h1>
+            <a href="/merge" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors whitespace-nowrap">
+                합치기
+            </a>
+        </div>
+        <p class="text-gray-600 mb-6">모든 엑셀 내용 합치기</p>
+
+        <form action="/upload" method="post" enctype="multipart/form-data" class="mb-6 p-4 border-2 border-dashed rounded-lg">
+             <div class="mb-2">
+                <label for="data_file" class="block text-gray-700 text-sm font-bold mb-2">내 파일 선택:</label>
+                <input type="file" name="file" id="data_file" required
+                       class="block w-full text-sm text-gray-500
+                              file:mr-4 file:py-2 file:px-4
+                              file:rounded-full file:border-0
+                              file:text-sm file:font-semibold
+                              file:bg-blue-50 file:text-blue-700
+                              hover:file:bg-blue-100"
+                       accept=".xlsx, .xls, .csv">
+            </div>
+            <button type="submit"
+                    class="w-full px-6 py-3 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition-colors">
+                업로드
+            </button>
+        </form>
+
+        <h2 class="text-xl font-semibold mb-2">Uploaded Data Files:</h2>
+        {% if data_files %}
+            <ul class="space-y-3">
+                {% for file in data_files %}
+                <li class="flex items-center justify-between bg-gray-50 p-3 rounded-md hover:bg-gray-100">
+                    <span class="font-mono text-gray-700 truncate pr-2">{{ file }}</span>
+                    <div class="flex items-center space-x-2 flex-shrink-0">
+                        <!-- 마이데이터 다운받는 부분
+                        <a href="/download_my_data/{{ file }}" class="px-3 py-1 bg-teal-500 text-white text-sm font-semibold rounded-full hover:bg-teal-600" title="Download My Data from '{{ master_merge_filename }}'">My Data</a>
+                        -->
+                        <a href="/download/{{ file }}" class="px-3 py-1 bg-green-500 text-white text-sm font-semibold rounded-full hover:bg-green-600">다운</a>
+                        <a href="/delete/{{ file }}" class="px-3 py-1 bg-red-500 text-white text-sm font-semibold rounded-full hover:bg-red-600" onclick="return confirm('Are you sure you want to delete this file?');">삭제</a>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="text-center text-gray-500">No data files have been uploaded yet.</p>
+        {% endif %}
+    </div>
+
+    <!-- Data Files 두번째 업로드 Upload and Management Section -->
     <div class="bg-white p-8 rounded-lg shadow-lg">
         <div class="flex justify-between items-center mb-4">
             <h1 class="text-3xl font-bold">Data Files</h1>
@@ -53,16 +124,6 @@
         {% else %}
             <p class="text-center text-gray-500">No data files have been uploaded yet.</p>
         {% endif %}
-    </div>
-
-    <!-- Data Files Upload and Management Section -->
-    <div class="bg-white p-8 rounded-lg shadow-lg">
-        <div class="flex justify-between items-center mb-4">
-            <h1 class="text-3xl font-bold">Data Files</h1>
-            <a href="/merge" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors whitespace-nowrap">
-                Merge All Data Files
-            </a>
-        </div>
     </div>
 
 
