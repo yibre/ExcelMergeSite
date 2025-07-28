@@ -39,8 +39,8 @@ async def read_home(request: Request):
         files1 = os.listdir(UPLOADS_DIR+"/ver1")
         files2 = os.listdir(UPLOADS_DIR+"/ver2")
         template_file = TEMPLATE_FILENAME if TEMPLATE_FILENAME in all_files else None
-        data_files1 = [f for f in files1 if f not in [TEMPLATE_FILENAME, MASTER_MERGE_FILENAME, 'merged_output_r1.xlsx']]
-        data_files2 = [f for f in files2 if f not in [TEMPLATE_FILENAME, MASTER_MERGE_FILENAME, 'merged_output_r2.xlsx']]
+        data_files1 = [f for f in files1 if f not in [TEMPLATE_FILENAME, 'merged_output_r1.xlsx']]
+        data_files2 = [f for f in files2 if f not in [TEMPLATE_FILENAME, 'merged_output_r2.xlsx']]
     except OSError:
         print("os error occured")
         template_file = None
@@ -188,7 +188,7 @@ def search_key_in_excel(version: str, key_value: str) -> list[list[any]]:
 
         # 헤더를 제외하고 두 번째 행부터 순회
         # values_only=True로 설정하면 셀 객체가 아닌 값의 튜플을 바로 얻을 수 있어 편리합니다.
-        for row in sheet.iter_rows(min_row=6, values_only=True):
+        for row in sheet.iter_rows(min_row=5, values_only=True):
             # 행에 데이터가 있고, 두 번째 열이 존재하는지 확인
             if len(row) > 1 and row[1] is not None:
                 # 두 번째 열(인덱스 1)의 값을 문자열로 변환하여 비교
