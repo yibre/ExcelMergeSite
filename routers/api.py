@@ -20,7 +20,12 @@ router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 router.mount("/static", StaticFiles(directory="static"), name="static")
 
-# 검색 결과 global 함수화
+
+# ver1 용인지 ver2 용인지 리턴
+def get_version_dir(version: str):
+    """Helper to get the correct versioned directory path."""
+    return os.path.join(UPLOADS_DIR, version)
+
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -33,19 +38,23 @@ async def read_home(request: Request):
         all_files = os.listdir(UPLOADS_DIR)
         files1 = os.listdir(UPLOADS_DIR+"/ver1")
         files2 = os.listdir(UPLOADS_DIR+"/ver2")
-        template_file = TEMPLATE_FILENAME if TEMPLATE_FILENAME in files1 else None
-        data_files = [f for f in files1 if f != TEMPLATE_FILENAME]
+        template_file = TEMPLATE_FILENAME if TEMPLATE_FILENAME in all_files else None
+        data_files1 = [f for f in files1 if f not in [TEMPLATE_FILENAME, MASTER_MERGE_FILENAME, 'merged_output_r1.xlsx']]
+        data_files2 = [f for f in files2 if f not in [TEMPLATE_FILENAME, MASTER_MERGE_FILENAME, 'merged_output_r2.xlsx']]
     except OSError:
         print("os error occured")
         template_file = None
-        data_files = []
+        data_files1 = []
+        data_files2 = []
         
     context = {
         "request": request,
         "title": "Home Page - File Uploader",
         "message": "Upload data files below. Use the dedicated button for the template.",
+        "versions": VERSIONS,
         "template_file": template_file,
-        "data_files": data_files,
+        "data_files1": data_files1, # ver1에 올라간 파일 리스트
+        "data_files2": data_files2, # ver2에 올라간 파일 리스트
         "master_merge_filename": MASTER_MERGE_FILENAME
     }
     return templates.TemplateResponse("home.html", context)
@@ -63,12 +72,20 @@ async def handle_upload_template(file: UploadFile = File(...)):
     return RedirectResponse(url="/", status_code=303)
 
 
-@router.post("/upload", response_class=RedirectResponse)
-async def handle_upload(file: UploadFile = File(...)):
+@router.post("/upload_master/{version}", response_class=RedirectResponse)
+async def handle_upload_master(version: str, file: UploadFile = File(...)):
+    file_path = os.path.join(get_version_dir(version), MASTER_MERGE_FILENAME)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    return RedirectResponse(url="/", status_code=303)
+
+
+@router.post("/upload/{version}", response_class=RedirectResponse)
+async def handle_upload(version: str, file: UploadFile = File(...)):
     """
     This endpoint handles the data file uploads.
     """
-    file_path = os.path.join(UPLOADS_DIR, file.filename)
+    file_path = os.path.join(get_version_dir(version), file.filename)
     # Prevent overwriting the template with a data file of the same name
     if file.filename == TEMPLATE_FILENAME:
         return HTMLResponse(content="Cannot upload a data file with the name 'template.xlsx'. Please use the dedicated template upload button.", status_code=400)
@@ -78,18 +95,18 @@ async def handle_upload(file: UploadFile = File(...)):
 
 
 
-@router.get("/download/{filename}", response_class=FileResponse)
-async def handle_download(filename: str):
-    file_path = os.path.join(UPLOADS_DIR, filename)
+@router.get("/download/{version}/{filename}", response_class=FileResponse)
+async def handle_download(version: str, filename: str):
+    file_path = os.path.join(get_version_dir(version), filename)
     if os.path.exists(file_path):
         return FileResponse(path=file_path, media_type='routerlication/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=filename)
     return HTMLResponse(content="File not found.", status_code=404)
 
 
 
-@router.get("/delete/{filename}", response_class=RedirectResponse)
-async def handle_delete(filename: str):
-    file_path = os.path.join(UPLOADS_DIR, filename)
+@router.get("/delete/{version}/{filename}", response_class=RedirectResponse)
+async def handle_delete(version: str, filename: str):
+    file_path = os.path.join(get_version_dir(version), filename)
     if ".." in filename or filename.startswith("/"):
         return HTMLResponse(content="Invalid filename.", status_code=400)
     if os.path.exists(file_path):
@@ -101,15 +118,19 @@ async def handle_delete(filename: str):
 
 
 
-@router.get("/merge", response_class=FileResponse)
-async def handle_merge():
+@router.get("/merge/{version}", response_class=FileResponse)
+async def handle_merge(version: str):
     """
     UPDATED: This endpoint now dynamically finds the header in each data file
     by comparing it to the template's header.
     """
+    # template_path는 늘 uploads 폴더 내에 위치시킬 것
     template_path = os.path.join(UPLOADS_DIR, TEMPLATE_FILENAME)
-    output_filename = "merged_output.xlsx"
-    output_path = os.path.join(UPLOADS_DIR, output_filename)
+    if version == 'ver1':
+        output_filename = "merged_output_"+"r1"+".xlsx"
+    else:
+        output_filename = "merged_output_"+"r2"+".xlsx"
+    output_path = os.path.join(get_version_dir(version), output_filename)
 
     if not os.path.exists(template_path):
         return HTMLResponse(content=f"Template file '{TEMPLATE_FILENAME}' not found. Please upload it first.", status_code=404)
@@ -119,10 +140,11 @@ async def handle_merge():
     merged_ws = merged_wb.active
     template_header = [cell.value for cell in merged_ws[4]]
     
-    files_to_merge = [f for f in os.listdir(UPLOADS_DIR) if f.endswith('.xlsx') and f not in [TEMPLATE_FILENAME, output_filename, MASTER_MERGE_FILENAME]]
+    
+    files_to_merge = [f for f in os.listdir(get_version_dir(version)) if f.endswith('.xlsx') and f not in [TEMPLATE_FILENAME, output_filename, MASTER_MERGE_FILENAME]]
 
     for filename in files_to_merge:
-        filepath = os.path.join(UPLOADS_DIR, filename)
+        filepath = os.path.join(get_version_dir(version), filename)
         source_wb = openpyxl.load_workbook(filepath)
         source_ws = source_wb.active
         
@@ -142,51 +164,9 @@ async def handle_merge():
 
     merged_wb.save(output_path)
     return FileResponse(path=output_path, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=output_filename)
-
-
-## 현재 안 쓰는 코드
-@router.get("/download_my_data/{original_filename}")
-async def download_my_data(original_filename: str):
-    master_path = os.path.join(UPLOADS_DIR, MASTER_MERGE_FILENAME)
-    user_file_path = os.path.join(UPLOADS_DIR, original_filename)
-
-    if not os.path.exists(master_path):
-        return HTMLResponse(content=f"Master file '{MASTER_MERGE_FILENAME}' not found. Please upload it.", status_code=404)
-    if not os.path.exists(user_file_path):
-        return HTMLResponse(content=f"Original user file '{original_filename}' not found.", status_code=404)
-
-    try:
-        user_wb = openpyxl.load_workbook(user_file_path)
-        user_ws = user_wb.active
-        key_value = user_ws['B5'].value
-        if key_value is None:
-            return HTMLResponse(content=f"Could not find a key value in cell B6 of '{original_filename}'.", status_code=400)
-
-        filtered_wb = openpyxl.Workbook()
-        filtered_ws = filtered_wb.active
-        
-        master_wb = openpyxl.load_workbook(master_path)
-        master_ws = master_wb.active
-        header = [cell.value for cell in master_ws[4]]
-        filtered_ws.append(header)
-
-        for row in master_ws.iter_rows(min_row=2, values_only=True):
-            print(row)
-            if len(row) > 1 and row[1] == key_value:
-                filtered_ws.append(row)
-        
-        output_filename = f"filtered_for_{key_value}.xlsx"
-        output_path = os.path.join(UPLOADS_DIR, output_filename)
-        filtered_wb.save(output_path)
-
-        return FileResponse(path=output_path, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=output_filename)
-
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return HTMLResponse(content=f"An error occurred during processing: {e}", status_code=500)
     
 
-def search_key_in_excel(key_value: str) -> list[list[any]]:
+def search_key_in_excel(version: str, key_value: str) -> list[list[any]]:
     """
     업로드된 엑셀 파일의 두 번째 열(B열)에서 key_value와 일치하는 모든 행 찾기
 
@@ -200,8 +180,9 @@ def search_key_in_excel(key_value: str) -> list[list[any]]:
     matching_rows = []
     try:
         # 업로드된 파일을 메모리에서 직접 로드
-        # workbook = openpyxl.load_workbook(file.file)
-        master_path = os.path.join(UPLOADS_DIR, "merged_output.xlsx")
+
+        master_path = os.path.join(get_version_dir(version), MASTER_MERGE_FILENAME)
+        
         workbook = openpyxl.load_workbook(master_path)
         sheet = workbook.active
 
@@ -238,6 +219,7 @@ def get_cell_styles(cell):
 
 @router.get("/search/", summary="key로 행 값 검색", response_class=HTMLResponse)
 async def search_rows_by_key(
+    request: Request,
     key: int = Query(..., description="The integer value to search for")
     ):
     """
@@ -252,12 +234,13 @@ async def search_rows_by_key(
     """
     # 각 파일에 대해 검색 함수 호출
     # results_from_file1 = search_key_in_excel(file1, key)
-    results_from_file2 = search_key_in_excel(key)
-    print(results_from_file2)
+    r1_data = search_key_in_excel("ver1", key)
+    r2_data = search_key_in_excel("ver2", key)
 
     context = {
+        "request": request,
         "key": key,
-        "hi": "hithere",
+        "data": [['ver1', r1_data], ['ver2', r2_data]]
     }
 
     return templates.TemplateResponse("search.html", context)

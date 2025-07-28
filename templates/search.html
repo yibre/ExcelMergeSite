@@ -8,7 +8,7 @@
 {% block content %}
  
  
- <!-- NEW: Search Section -->
+ <!-- NEW: 검색 결과 데이터 -->
     <div class="mb-8 bg-white p-6 rounded-lg shadow-lg">
         <form id="search-form" action="/search/" method="get">
             <div class="flex items-center space-x-4">
@@ -22,13 +22,38 @@
         </form>
         
         <!-- Div to display search results -->
-        
-        {% if table_data %}
+        {% for d in data %}
+            <p class="mt-10 text-left text-gray-500">{% if d[0] == 'ver1' %}R1.0 {%else%}R2.0{%endif%}</p>
+            {% if d[1] %}
+            <div class="mb-8 bg-white p-6 rounded-lg">
+                <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
+                    <tbody>
+                        {% for row in d[1] %}
+                        <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 border-gray-200">
+                            {% for cell in row %}
+                            <td class="px-6 py-4">{{ cell }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+                <p class="text-center text-gray-500">{{key}} 안건번호 데이터 없음</p>
+            {% endif %}
+        {% endfor %}
+    
+    </div>
+{% endblock %}
+
+
+<!--
+https://inpa.tistory.com/entry/CSS-%F0%9F%92%8D-%ED%85%8C%EC%9D%B4%EB%B8%94table-%EB%94%94%EC%9E%90%EC%9D%B8-%F0%9F%96%8C%EF%B8%8F-%EB%AA%A8%EC%9D%8C
+
+        <p> search page 2 </p>
         <div id="search-results-container" class="mt-6 hidden">
             <h3 class="text-xl font-semibold mb-2">결과:</h3>
             <pre id="search-results" class="bg-gray-900 text-white p-4 rounded-lg text-sm overflow-x-auto"></pre>
         </div>
-        {% endif %}
-    
-    </div>
-{% endblock %}
+
+-->
