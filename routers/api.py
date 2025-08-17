@@ -1,7 +1,7 @@
 import os
 import shutil
 import openpyxl
-from fastapi import Request, UploadFile, File, APIRouter, Query
+from fastapi import Request, UploadFile, File, APIRouter, Query, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -138,6 +138,8 @@ async def handle_merge(version: str):
     # Load the template and get its header
     merged_wb = openpyxl.load_workbook(template_path)
     merged_ws = merged_wb.active
+
+    # 4번째 줄까지는 헤더, 다섯번째 줄 이후부터 합치기 시작
     template_header = [cell.value for cell in merged_ws[4]]
     
     
@@ -199,7 +201,7 @@ def search_key_in_excel(version: str, key_value: str) -> list[list[any]]:
 
     except Exception as e:
         # 파일 처리 중 오류 발생 시 예외 처리
-        raise HTTPException(status_code=400, detail=f"'{file.filename}' 파일 처리 중 오류 발생: {e}")
+        raise HTTPException(status_code=400, detail=f"'{MASTER_MERGE_FILENAME}' 파일 처리 중 오류 발생: {e}")
 
     return matching_rows
 
