@@ -1,7 +1,7 @@
 import os
 import shutil
 import openpyxl
-from fastapi import Request, UploadFile, File, APIRouter, Query
+from fastapi import Request, UploadFile, File, APIRouter, Query, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -138,6 +138,8 @@ async def handle_merge(version: str):
     # Load the template and get its header
     merged_wb = openpyxl.load_workbook(template_path)
     merged_ws = merged_wb.active
+
+    # 4번째 줄까지는 헤더, 다섯번째 줄 이후부터 합치기 시작
     template_header = [cell.value for cell in merged_ws[4]]
     
     
@@ -186,12 +188,12 @@ def search_key_in_excel(version: str, key_value: str) -> list[list[any]]:
         workbook = openpyxl.load_workbook(master_path)
         sheet = workbook.active
 
-        # 헤더를 제외하고 두 번째 행부터 순회
-        # values_only=True로 설정하면 셀 객체가 아닌 값의 튜플을 바로 얻을 수 있어 편리합니다.
+        # 헤더를 제외하고 다섯번째 행부터 순회
+        # values_only=True로 설정하면 셀 객체가 아닌 값의 튜플을 바로 얻을 수 있다고 함
         for row in sheet.iter_rows(min_row=5, values_only=True):
-            # 행에 데이터가 있고, 두 번째 열이 존재하는지 확인
+            # 행에 데이터가 있고, 다섯 번째 열이 존재하는지 확인
             if len(row) > 1 and row[1] is not None:
-                # 두 번째 열(인덱스 1)의 값을 문자열로 변환하여 비교
+                # 다섯 번째 열(인덱스 1)의 값을 문자열로 변환하여 비교
                 if str(row[1]).strip() == str(key_value).strip():
                     # 빈 셀(None)은 빈 문자열로 변환하여 추가
                     clean_row = ["" if cell is None else cell for cell in row]
@@ -199,7 +201,7 @@ def search_key_in_excel(version: str, key_value: str) -> list[list[any]]:
 
     except Exception as e:
         # 파일 처리 중 오류 발생 시 예외 처리
-        raise HTTPException(status_code=400, detail=f"'{file.filename}' 파일 처리 중 오류 발생: {e}")
+        raise HTTPException(status_code=400, detail=f"'{MASTER_MERGE_FILENAME}' 파일 처리 중 오류 발생: {e}")
 
     return matching_rows
 
