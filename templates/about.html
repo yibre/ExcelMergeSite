@@ -1,1 +1,470 @@
-안녕!
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>데이터 관리 시스템</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .editable-cell {
+            min-width: 120px;
+            padding: 8px;
+            border: 1px solid #e5e7eb;
+            background: white;
+        }
+        
+        .editable-cell:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .paste-area {
+            min-height: 200px;
+            resize: vertical;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-6xl mx-auto">
+            <!-- 헤더 -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">데이터 관리 시스템</h1>
+                <p class="text-gray-600">엑셀 데이터를 추가하고 관리하세요</p>
+            </div>
+
+            <!-- 현재 IP 정보 -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div class="flex items-center">
+                    <svg class="w-5 h-5 text-blue-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span class="text-blue-700">현재 IP: <span id="current-ip" class="font-mono font-semibold">로딩중...</span></span>
+                    <span class="text-blue-700 ml-4">저장된 ID 개수: <span id="id-count" class="font-semibold">0</span>개</span>
+                </div>
+            </div>
+
+            <!-- 버튼 영역 -->
+            <div class="flex flex-wrap gap-4 mb-6">
+                <button id="add-data-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold shadow-md transition-colors duration-200">
+                    📊 데이터 추가하기
+                </button>
+                <button id="view-data-btn" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold shadow-md transition-colors duration-200">
+                    📈 내 데이터 보기
+                </button>
+                <button id="load-template-btn" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold shadow-md transition-colors duration-200">
+                    📋 템플릿 불러오기
+                </button>
+            </div>
+
+            <!-- 데이터 입력 영역 (초기에는 숨김) -->
+            <div id="data-input-section" class="bg-white rounded-lg shadow-md p-6 mb-6 hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800">데이터 입력</h2>
+                    <button id="close-input-btn" class="text-gray-500 hover:text-gray-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- 붙여넣기 영역 -->
+                <div class="mb-6">
+                    <label for="paste-area" class="block text-sm font-medium text-gray-700 mb-2">
+                        엑셀 데이터 붙여넣기 (선택사항)
+                    </label>
+                    <textarea 
+                        id="paste-area" 
+                        class="w-full p-3 border border-gray-300 rounded-lg paste-area focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                        placeholder="엑셀에서 복사한 데이터를 여기에 붙여넣으세요. Tab으로 구분된 데이터를 자동으로 파싱합니다.">
+                    </textarea>
+                    <button id="parse-paste-btn" class="mt-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-medium">
+                        붙여넣은 데이터 파싱
+                    </button>
+                </div>
+
+                <!-- 표 영역 -->
+                <div class="table-container border border-gray-300 rounded-lg">
+                    <table id="data-table" class="w-full">
+                        <thead id="table-header" class="bg-gray-50 sticky top-0">
+                            <!-- 헤더는 JavaScript로 동적 생성 -->
+                        </thead>
+                        <tbody id="table-body">
+                            <!-- 행은 JavaScript로 동적 생성 -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 표 조작 버튼 -->
+                <div class="flex flex-wrap gap-3 mt-4">
+                    <button id="add-row-btn" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded font-medium">
+                        ➕ 행 추가
+                    </button>
+                    <button id="remove-row-btn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-medium">
+                        ➖ 마지막 행 삭제
+                    </button>
+                    <button id="clear-table-btn" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded font-medium">
+                        🗑️ 표 초기화
+                    </button>
+                </div>
+
+                <!-- 제출 버튼 -->
+                <div class="mt-6 pt-4 border-t border-gray-200">
+                    <button id="submit-btn" class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-semibold shadow-md transition-colors duration-200">
+                        💾 데이터 저장
+                    </button>
+                </div>
+            </div>
+
+            <!-- 내 데이터 보기 영역 -->
+            <div id="my-data-section" class="bg-white rounded-lg shadow-md p-6 hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800">내 저장된 데이터</h2>
+                    <button id="close-data-view-btn" class="text-gray-500 hover:text-gray-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div id="my-data-content">
+                    <!-- 데이터 내용은 JavaScript로 동적 생성 -->
+                </div>
+            </div>
+
+            <!-- 알림 메시지 -->
+            <div id="notification" class="fixed top-4 right-4 p-4 rounded-lg shadow-lg hidden z-50">
+                <div id="notification-content" class="flex items-center">
+                    <span id="notification-message"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수
+        let currentHeaders = [];
+        let currentIP = '';
+
+        // DOM 요소들
+        const elements = {
+            addDataBtn: document.getElementById('add-data-btn'),
+            viewDataBtn: document.getElementById('view-data-btn'),
+            loadTemplateBtn: document.getElementById('load-template-btn'),
+            dataInputSection: document.getElementById('data-input-section'),
+            myDataSection: document.getElementById('my-data-section'),
+            closeInputBtn: document.getElementById('close-input-btn'),
+            closeDataViewBtn: document.getElementById('close-data-view-btn'),
+            pasteArea: document.getElementById('paste-area'),
+            parsePasteBtn: document.getElementById('parse-paste-btn'),
+            dataTable: document.getElementById('data-table'),
+            tableHeader: document.getElementById('table-header'),
+            tableBody: document.getElementById('table-body'),
+            addRowBtn: document.getElementById('add-row-btn'),
+            removeRowBtn: document.getElementById('remove-row-btn'),
+            clearTableBtn: document.getElementById('clear-table-btn'),
+            submitBtn: document.getElementById('submit-btn'),
+            currentIPSpan: document.getElementById('current-ip'),
+            idCountSpan: document.getElementById('id-count'),
+            notification: document.getElementById('notification'),
+            notificationMessage: document.getElementById('notification-message')
+        };
+
+        // 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            loadMyData();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            elements.addDataBtn.addEventListener('click', showDataInput);
+            elements.viewDataBtn.addEventListener('click', showMyData);
+            elements.loadTemplateBtn.addEventListener('click', loadTemplate);
+            elements.closeInputBtn.addEventListener('click', hideDataInput);
+            elements.closeDataViewBtn.addEventListener('click', hideMyData);
+            elements.parsePasteBtn.addEventListener('click', parsePastedData);
+            elements.addRowBtn.addEventListener('click', addRow);
+            elements.removeRowBtn.addEventListener('click', removeLastRow);
+            elements.clearTableBtn.addEventListener('click', clearTable);
+            elements.submitBtn.addEventListener('click', submitData);
+        }
+
+        async function loadMyData() {
+            try {
+                const response = await fetch('/api/my-data');
+                const data = await response.json();
+                elements.currentIPSpan.textContent = data.client_ip;
+                elements.idCountSpan.textContent = data.ids.length;
+                currentIP = data.client_ip;
+            } catch (error) {
+                showNotification('데이터를 불러오는데 실패했습니다.', 'error');
+            }
+        }
+
+        async function loadTemplate() {
+            try {
+                const response = await fetch('/api/template');
+                const template = await response.json();
+                
+                currentHeaders = template.headers;
+                createTable(template.headers, template.rows);
+                showDataInput();
+                showNotification('템플릿이 로드되었습니다.', 'success');
+            } catch (error) {
+                showNotification('템플릿을 불러오는데 실패했습니다.', 'error');
+            }
+        }
+
+        function showDataInput() {
+            elements.dataInputSection.classList.remove('hidden');
+            elements.myDataSection.classList.add('hidden');
+            
+            if (currentHeaders.length === 0) {
+                loadTemplate(); // 기본 템플릿 로드
+            }
+        }
+
+        function hideDataInput() {
+            elements.dataInputSection.classList.add('hidden');
+            elements.pasteArea.value = '';
+        }
+
+        function showMyData() {
+            elements.myDataSection.classList.remove('hidden');
+            elements.dataInputSection.classList.add('hidden');
+            loadAndDisplayMyData();
+        }
+
+        function hideMyData() {
+            elements.myDataSection.classList.add('hidden');
+        }
+
+        async function loadAndDisplayMyData() {
+            try {
+                const response = await fetch('/api/my-data');
+                const data = await response.json();
+                
+                const content = document.getElementById('my-data-content');
+                if (data.ids.length === 0) {
+                    content.innerHTML = '<p class="text-gray-500">저장된 데이터가 없습니다.</p>';
+                } else {
+                    const idList = data.ids.map(id => `<span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">${id}</span>`).join(' ');
+                    content.innerHTML = `
+                        <div class="mb-4">
+                            <p class="text-sm text-gray-600 mb-2">IP: <span class="font-mono">${data.client_ip}</span></p>
+                            <p class="text-sm text-gray-600 mb-3">총 ${data.ids.length}개의 ID가 저장되어 있습니다.</p>
+                            <div class="flex flex-wrap gap-2">
+                                ${idList}
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                showNotification('데이터를 불러오는데 실패했습니다.', 'error');
+            }
+        }
+
+        function parsePastedData() {
+            const pastedText = elements.pasteArea.value.trim();
+            if (!pastedText) {
+                showNotification('붙여넣을 데이터가 없습니다.', 'warning');
+                return;
+            }
+
+            // 탭이나 쉼표로 구분된 데이터 파싱
+            const lines = pastedText.split('\n').filter(line => line.trim());
+            const rows = lines.map(line => {
+                // 탭으로 먼저 분리 시도, 없으면 쉼표로 분리
+                return line.includes('\t') ? line.split('\t') : line.split(',');
+            });
+
+            if (rows.length === 0) {
+                showNotification('유효한 데이터가 없습니다.', 'warning');
+                return;
+            }
+
+            // 첫 번째 행이 헤더인지 확인 (숫자가 아닌 경우 헤더로 간주)
+            let headers, dataRows;
+            if (rows[0].some(cell => isNaN(cell.trim()) && cell.trim() !== '')) {
+                headers = rows[0].map(cell => cell.trim());
+                dataRows = rows.slice(1);
+            } else {
+                // 기본 템플릿 헤더 사용
+                if (currentHeaders.length === 0) {
+                    await loadTemplate();
+                }
+                headers = currentHeaders;
+                dataRows = rows;
+            }
+
+            // 데이터 정규화 (각 행의 열 개수를 헤더 개수에 맞춤)
+            const normalizedRows = dataRows.map(row => {
+                const normalizedRow = [];
+                for (let i = 0; i < headers.length; i++) {
+                    normalizedRow.push(row[i] ? row[i].trim() : '');
+                }
+                return normalizedRow;
+            });
+
+            currentHeaders = headers;
+            createTable(headers, normalizedRows);
+            elements.pasteArea.value = '';
+            showNotification('데이터가 성공적으로 파싱되었습니다.', 'success');
+        }
+
+        function createTable(headers, rows) {
+            // 헤더 생성
+            const headerRow = document.createElement('tr');
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.className = 'px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b';
+                th.textContent = header;
+                headerRow.appendChild(th);
+            });
+            elements.tableHeader.innerHTML = '';
+            elements.tableHeader.appendChild(headerRow);
+
+            // 행 생성
+            elements.tableBody.innerHTML = '';
+            rows.forEach(row => {
+                addTableRow(row);
+            });
+
+            currentHeaders = headers;
+        }
+
+        function addTableRow(data = null) {
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-gray-50';
+
+            currentHeaders.forEach((header, index) => {
+                const td = document.createElement('td');
+                td.className = 'border-b';
+                
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'editable-cell';
+                input.value = data ? (data[index] || '') : '';
+                
+                td.appendChild(input);
+                row.appendChild(td);
+            });
+
+            elements.tableBody.appendChild(row);
+        }
+
+        function addRow() {
+            addTableRow();
+            showNotification('새 행이 추가되었습니다.', 'success');
+        }
+
+        function removeLastRow() {
+            const rows = elements.tableBody.children;
+            if (rows.length > 1) {
+                elements.tableBody.removeChild(rows[rows.length - 1]);
+                showNotification('마지막 행이 삭제되었습니다.', 'success');
+            } else {
+                showNotification('최소 하나의 행은 유지되어야 합니다.', 'warning');
+            }
+        }
+
+        function clearTable() {
+            if (confirm('정말로 표를 초기화하시겠습니까?')) {
+                elements.tableBody.innerHTML = '';
+                addTableRow(); // 빈 행 하나 추가
+                showNotification('표가 초기화되었습니다.', 'success');
+            }
+        }
+
+        function getTableData() {
+            const rows = [];
+            Array.from(elements.tableBody.children).forEach(row => {
+                const rowData = [];
+                Array.from(row.children).forEach(cell => {
+                    const input = cell.querySelector('input');
+                    rowData.push(input.value.trim());
+                });
+                
+                // 빈 행이 아닌 경우만 추가
+                if (rowData.some(cell => cell !== '')) {
+                    rows.push(rowData);
+                }
+            });
+
+            return {
+                headers: currentHeaders,
+                rows: rows
+            };
+        }
+
+        async function submitData() {
+            const tableData = getTableData();
+            
+            if (tableData.rows.length === 0) {
+                showNotification('저장할 데이터가 없습니다.', 'warning');
+                return;
+            }
+
+            // ID 컬럼(두 번째 열) 체크
+            const hasValidId = tableData.rows.some(row => row[1] && row[1].trim() !== '');
+            if (!hasValidId) {
+                showNotification('ID 값이 필요합니다. (두 번째 열)', 'error');
+                return;
+            }
+
+            try {
+                elements.submitBtn.disabled = true;
+                elements.submitBtn.textContent = '저장 중...';
+
+                const response = await fetch('/api/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        data: tableData
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showNotification(result.message, 'success');
+                    loadMyData(); // IP 정보 업데이트
+                    hideDataInput();
+                } else {
+                    showNotification(result.detail || '저장에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                showNotification('서버 연결에 실패했습니다.', 'error');
+                console.error('Error:', error);
+            } finally {
+                elements.submitBtn.disabled = false;
+                elements.submitBtn.textContent = '💾 데이터 저장';
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const colors = {
+                success: 'bg-green-500 text-white',
+                error: 'bg-red-500 text-white',
+                warning: 'bg-yellow-500 text-white',
+                info: 'bg-blue-500 text-white'
+            };
+
+            elements.notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${colors[type]}`;
+            elements.notificationMessage.textContent = message;
+            elements.notification.classList.remove('hidden');
+
+            setTimeout(() => {
+                elements.notification.classList.add('hidden');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
