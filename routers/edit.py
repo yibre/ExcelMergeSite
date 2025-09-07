@@ -11,5 +11,13 @@ from io import BytesIO
 import base64
 from fastapi.templating import Jinja2Templates
 
-router = APIRouter()
-templates = Jinja2Templates(directory="about.html")
+router = APIRouter(prefix="/edit")
+templates = Jinja2Templates(directory="templates")
+
+# 데이터 모델 정의
+class TableData(BaseModel):
+    headers: List[str]
+    rows: List[List[Any]]
+
+class DataSubmission(BaseModel):
+    data: TableData 
