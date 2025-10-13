@@ -1,6 +1,7 @@
 import os
 import shutil
 import openpyxl
+from datetime import datetime
 from fastapi import Request, UploadFile, File, APIRouter, Query, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -74,7 +75,10 @@ async def handle_upload_template(file: UploadFile = File(...)):
 
 @router.post("/upload_master/{version}", response_class=RedirectResponse)
 async def handle_upload_master(version: str, file: UploadFile = File(...)):
-    file_path = os.path.join(get_version_dir(version), MASTER_MERGE_FILENAME)
+    now = datetime.now()
+    timestamp = now.strftime("%y%m%d_%H시%M분")
+    filename = f"master_{timestamp}.xlsx"
+    file_path = os.path.join(get_version_dir(version), filename)
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     return RedirectResponse(url="/", status_code=303)
