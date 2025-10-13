@@ -17,4 +17,4 @@ app.include_router(api.router)
 
 # run server by 'python main.py' in windows
 if __name__ == '__main__':
-    uvicorn.run('main:app', port=80, reload=True)
+    uvicorn.run('main:app', host="0.0.0.0", port=80, reload=True)

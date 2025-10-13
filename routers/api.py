@@ -177,7 +177,7 @@ def search_key_in_excel(version: str, key_value: str) -> list[list[any]]:
     업로드된 엑셀 파일의 두 번째 열(B열)에서 key_value와 일치하는 모든 행 찾기
 
     Args:
-        file (UploadFile): 사용자가 업로드한 엑셀 파일. file: UploadFile,
+        version (str): 버전 디렉토리 (ver1 또는 ver2)
         key_value (str): 검색할 키 값.
 
     Returns:
@@ -185,9 +185,16 @@ def search_key_in_excel(version: str, key_value: str) -> list[list[any]]:
     """
     matching_rows = []
     try:
-        # 업로드된 파일을 메모리에서 직접 로드
-
-        master_path = os.path.join(get_version_dir(version), MASTER_MERGE_FILENAME)
+        # version 디렉토리에서 'master'로 시작하는 파일 찾기
+        version_dir = get_version_dir(version)
+        master_files = [f for f in os.listdir(version_dir) if f.startswith('master') and f.endswith('.xlsx')]
+        
+        if not master_files:
+            raise HTTPException(status_code=404, detail=f"'{version}' 디렉토리에서 'master'로 시작하는 파일을 찾을 수 없습니다.")
+        
+        # 가장 최근 파일 사용 (파일명 기준 정렬)
+        master_file = sorted(master_files)[-1]
+        master_path = os.path.join(version_dir, master_file)
         
         workbook = openpyxl.load_workbook(master_path)
         sheet = workbook.active
@@ -205,7 +212,7 @@ def search_key_in_excel(version: str, key_value: str) -> list[list[any]]:
 
     except Exception as e:
         # 파일 처리 중 오류 발생 시 예외 처리
-        raise HTTPException(status_code=400, detail=f"'{MASTER_MERGE_FILENAME}' 파일 처리 중 오류 발생: {e}")
+        raise HTTPException(status_code=400, detail=f"'master' 파일 처리 중 오류 발생: {e}")
 
     return matching_rows
 
