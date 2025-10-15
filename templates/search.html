@@ -30,8 +30,8 @@
                     <tbody>
                         {% for row in d[1] %}
                         <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 border-gray-200">
-                            {% for cell in row %}
-                            <td class="px-6 py-4">{{ cell }}</td>
+                            {% for i in range(row['cells']|length) %}
+                            <td class="px-6 py-4" style="{{ row['styles'][i] }}">{{ row['cells'][i] }}</td>
                             {% endfor %}
                         </tr>
                         {% endfor %}
