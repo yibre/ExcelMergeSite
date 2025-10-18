@@ -27,19 +27,44 @@
             {% if d[1] %}
             <div class="mb-8 bg-white p-6 rounded-lg">
                 <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                        <tr>
+                            <td class="px-6 py-4 bg-gray-100">안건상정자</td>
+                            <td class="px-6 py-4 bg-gray-100">번호</td>
+                            <td class="px-6 py-4 bg-gray-100">hi</td>
+                            <td class="px-6 py-4 bg-gray-100">hi</td>
+                            <td class="px-6 py-4 bg-gray-100">hi</td>
+                            <td class="px-6 py-4 bg-gray-100">hi</td>
+                            <td class="px-6 py-4 bg-gray-100">hi</td>
+                            <td class="px-6 py-4 bg-gray-100">hi</td>
+                            <td class="px-6 py-4 bg-gray-100">hi</td>
+                            <td class="px-6 py-4 bg-gray-100">hi</td>
+                            <td class="px-6 py-4 bg-gray-100">hi</td>
+                            <td class="px-6 py-4 bg-gray-100">hi</td>
+                            <td class="px-6 py-4 bg-gray-100">hi</td>
+                        </tr>
+                    </thead>
                     <tbody>
                         {% for row in d[1] %}
                         <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 border-gray-200">
+                            <!-- 옵션 1. 사용중. 셀의 색 없이 데이터만 추출할 경우 -->
+                            {% for cell in row[:13] %}
+                            {% if loop.index0 != 2 %}
+                            <td class="px-6 py-4">{{ cell }}</td>
+                            {% endif %}
+                            {% endfor %}
+                            <!-- 옵션 2. 셀의 색을 함께 추출할 경우
                             {% for i in range(row['cells']|length) %}
                             <td class="px-6 py-4" style="{{ row['styles'][i] }}">{{ row['cells'][i] }}</td>
                             {% endfor %}
+                            -->
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
             {% else %}
-                <p class="text-center text-gray-500">{{key}} 안건번호 데이터 없음</p>
+                <p class="text-center text-gray-500">{{key}} 데이터 없음</p>
             {% endif %}
         {% endfor %}
     
