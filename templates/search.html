@@ -25,6 +25,9 @@
         {% for d in data %}
             <p class="mt-10 text-left text-black-500">{% if d[0] == 'ver1' %}R1.0 {%else%}R2.0{%endif%}</p>
             {% if d[1] %}
+            <button onclick="copyTableData()" class="mb-4 px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors">
+                결과 복사하기
+            </button>
             <div class="mb-8 bg-white p-6 rounded-lg overflow-x-auto">
                 <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400 border-collapse border border-gray-400">
                     <thead class="text-xs text-black uppercase bg-gray-50 dark:bg-gray-700 dark:text-grey-100">
@@ -82,6 +85,81 @@
         {% endfor %}
     
     </div>
+
+<script>
+function copyTableData() {
+    const tables = document.querySelectorAll('table');
+    if (tables.length === 0) {
+        alert('복사할 표가 없습니다.');
+        return;
+    }
+
+    let htmlContent = '<table border="1" cellpadding="5" cellspacing="0">';
+    let textContent = '';
+
+    tables.forEach((table, tableIndex) => {
+        // 헤더 행 처리
+        const headerRow = table.querySelector('thead tr');
+        if (headerRow) {
+            htmlContent += '<thead><tr>';
+            const headerCells = Array.from(headerRow.querySelectorAll('td'));
+            // 첫 번째, 두 번째 열을 제외하고 3번째부터 복사
+            const headerData = [];
+            headerCells.slice(2).forEach(cell => {
+                const text = cell.textContent.trim();
+                const bgColor = window.getComputedStyle(cell).backgroundColor;
+                htmlContent += `<td style="background-color: ${bgColor}; border: 1px solid #000;">${text}</td>`;
+                headerData.push(text);
+            });
+            htmlContent += '</tr></thead>';
+            textContent += headerData.join('\t') + '\n';
+        }
+
+        // 데이터 행 처리
+        htmlContent += '<tbody>';
+        const bodyRows = table.querySelectorAll('tbody tr');
+        bodyRows.forEach(row => {
+            htmlContent += '<tr>';
+            const cells = Array.from(row.querySelectorAll('td'));
+            const rowData = [];
+            // 첫 번째, 두 번째 열을 제외하고 3번째부터 복사
+            cells.slice(2).forEach(cell => {
+                const text = cell.textContent.trim();
+                const bgColor = window.getComputedStyle(cell).backgroundColor;
+                htmlContent += `<td style="background-color: ${bgColor}; border: 1px solid #000;">${text}</td>`;
+                rowData.push(text);
+            });
+            htmlContent += '</tr>';
+            textContent += rowData.join('\t') + '\n';
+        });
+        htmlContent += '</tbody>';
+
+        // 여러 테이블이 있을 경우 구분
+        if (tableIndex < tables.length - 1) {
+            textContent += '\n';
+        }
+    });
+
+    htmlContent += '</table>';
+
+    // ClipboardItem을 사용하여 HTML과 텍스트 모두 클립보드에 복사
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const textBlob = new Blob([textContent], { type: 'text/plain' });
+
+    const clipboardItem = new ClipboardItem({
+        'text/html': blob,
+        'text/plain': textBlob
+    });
+
+    navigator.clipboard.write([clipboardItem]).then(() => {
+        alert('표 형식이 클립보드에 복사되었습니다! (3번째 열부터)');
+    }).catch(err => {
+        console.error('복사 실패:', err);
+        alert('복사에 실패했습니다. 브라우저 권한을 확인해주세요.');
+    });
+}
+</script>
+
 {% endblock %}
 
 
