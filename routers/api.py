@@ -16,6 +16,7 @@ VERSIONS = ["ver1", "ver2"]
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 for version in VERSIONS:
     os.makedirs(os.path.join(UPLOADS_DIR, version), exist_ok=True)
+    os.makedirs(os.path.join(UPLOADS_DIR, version, "results"), exist_ok=True)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -42,12 +43,18 @@ async def read_home(request: Request):
         template_file = TEMPLATE_FILENAME if TEMPLATE_FILENAME in all_files else None
         data_files1 = [f for f in files1 if f not in [TEMPLATE_FILENAME, 'merged_output_r1.xlsx']]
         data_files2 = [f for f in files2 if f not in [TEMPLATE_FILENAME, 'merged_output_r2.xlsx']]
+
+        # results 폴더의 파일 리스트 가져오기
+        results_files1 = os.listdir(UPLOADS_DIR+"/ver1/results")
+        results_files2 = os.listdir(UPLOADS_DIR+"/ver2/results")
     except OSError:
         print("os error occured")
         template_file = None
         data_files1 = []
         data_files2 = []
-        
+        results_files1 = []
+        results_files2 = []
+
     context = {
         "request": request,
         "title": "Home Page - File Uploader",
@@ -56,6 +63,8 @@ async def read_home(request: Request):
         "template_file": template_file,
         "data_files1": data_files1, # ver1에 올라간 파일 리스트
         "data_files2": data_files2, # ver2에 올라간 파일 리스트
+        "results_files1": results_files1, # ver1/results에 올라간 파일 리스트
+        "results_files2": results_files2, # ver2/results에 올라간 파일 리스트
         "master_merge_filename": MASTER_MERGE_FILENAME
     }
     return templates.TemplateResponse("home.html", context)
@@ -78,7 +87,8 @@ async def handle_upload_master(version: str, file: UploadFile = File(...)):
     now = datetime.now()
     timestamp = now.strftime("%y%m%d_%H시%M분")
     filename = f"master_{timestamp}.xlsx"
-    file_path = os.path.join(get_version_dir(version), filename)
+    results_dir = os.path.join(get_version_dir(version), "results")
+    file_path = os.path.join(results_dir, filename)
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     return RedirectResponse(url="/", status_code=303)
@@ -99,16 +109,18 @@ async def handle_upload(version: str, file: UploadFile = File(...)):
 
 
 
-@router.get("/download/{version}/{filename}", response_class=FileResponse)
+@router.get("/download/{version}/{filename:path}", response_class=FileResponse)
 async def handle_download(version: str, filename: str):
     file_path = os.path.join(get_version_dir(version), filename)
     if os.path.exists(file_path):
-        return FileResponse(path=file_path, media_type='routerlication/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=filename)
+        # 실제 파일명만 추출 (경로 제외)
+        actual_filename = os.path.basename(filename)
+        return FileResponse(path=file_path, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=actual_filename)
     return HTMLResponse(content="File not found.", status_code=404)
 
 
 
-@router.get("/delete/{version}/{filename}", response_class=RedirectResponse)
+@router.get("/delete/{version}/{filename:path}", response_class=RedirectResponse)
 async def handle_delete(version: str, filename: str):
     file_path = os.path.join(get_version_dir(version), filename)
     if ".." in filename or filename.startswith("/"):
@@ -186,16 +198,17 @@ def search_key_in_excel(version: str, key_value: str) -> list[dict]:
     """
     matching_rows = []
     try:
-        # version 디렉토리에서 'master'로 시작하는 파일 찾기
+        # version/results 디렉토리에서 'master'로 시작하는 파일 찾기
         version_dir = get_version_dir(version)
-        master_files = [f for f in os.listdir(version_dir) if f.startswith('master') and f.endswith('.xlsx')]
+        results_dir = os.path.join(version_dir, "results")
+        master_files = [f for f in os.listdir(results_dir) if f.startswith('master') and f.endswith('.xlsx')]
 
         if not master_files:
-            raise HTTPException(status_code=404, detail=f"'{version}' 디렉토리에서 'master'로 시작하는 파일을 찾을 수 없습니다.")
+            raise HTTPException(status_code=404, detail=f"'{version}/results' 디렉토리에서 'master'로 시작하는 파일을 찾을 수 없습니다.")
 
         # 가장 최근 파일 사용 (파일명 기준 정렬)
         master_file = sorted(master_files)[-1]
-        master_path = os.path.join(version_dir, master_file)
+        master_path = os.path.join(results_dir, master_file)
 
         workbook = openpyxl.load_workbook(master_path)
         sheet = workbook.active
