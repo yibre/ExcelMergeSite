@@ -2,10 +2,11 @@ import os
 import shutil
 import openpyxl
 from datetime import datetime
-from fastapi import Request, UploadFile, File, APIRouter, Query, HTTPException
+from fastapi import Request, UploadFile, File, APIRouter, Query, HTTPException, Depends
 from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from routers.authentification import verify_ip_whitelist
 
 # --- Configuration ---
 UPLOADS_DIR = "uploads"
@@ -71,7 +72,10 @@ async def read_home(request: Request):
 
 
 @router.post("/upload_template", response_class=RedirectResponse)
-async def handle_upload_template(file: UploadFile = File(...)):
+async def handle_upload_template(
+    file: UploadFile = File(...),
+    client_ip: str = Depends(verify_ip_whitelist)
+):
     """
     NEW: Dedicated endpoint for uploading the template.xlsx file.
     It will always be saved as 'template.xlsx'.
@@ -83,7 +87,11 @@ async def handle_upload_template(file: UploadFile = File(...)):
 
 
 @router.post("/upload_master/{version}", response_class=RedirectResponse)
-async def handle_upload_master(version: str, file: UploadFile = File(...)):
+async def handle_upload_master(
+    version: str,
+    file: UploadFile = File(...),
+    client_ip: str = Depends(verify_ip_whitelist)
+):
     now = datetime.now()
     timestamp = now.strftime("%y%m%d_%H시%M분")
     filename = f"master_{version}_{timestamp}.xlsx"
@@ -95,7 +103,11 @@ async def handle_upload_master(version: str, file: UploadFile = File(...)):
 
 
 @router.post("/upload/{version}", response_class=RedirectResponse)
-async def handle_upload(version: str, file: UploadFile = File(...)):
+async def handle_upload(
+    version: str,
+    file: UploadFile = File(...),
+    client_ip: str = Depends(verify_ip_whitelist)
+):
     """
     This endpoint handles the data file uploads.
     """
@@ -110,7 +122,11 @@ async def handle_upload(version: str, file: UploadFile = File(...)):
 
 
 @router.get("/download/{version}/{filename:path}", response_class=FileResponse)
-async def handle_download(version: str, filename: str):
+async def handle_download(
+    version: str,
+    filename: str,
+    client_ip: str = Depends(verify_ip_whitelist)
+):
     file_path = os.path.join(get_version_dir(version), filename)
     if os.path.exists(file_path):
         # 실제 파일명만 추출 (경로 제외)
@@ -121,7 +137,11 @@ async def handle_download(version: str, filename: str):
 
 
 @router.get("/delete/{version}/{filename:path}", response_class=RedirectResponse)
-async def handle_delete(version: str, filename: str):
+async def handle_delete(
+    version: str,
+    filename: str,
+    client_ip: str = Depends(verify_ip_whitelist)
+):
     file_path = os.path.join(get_version_dir(version), filename)
     if ".." in filename or filename.startswith("/"):
         return HTMLResponse(content="Invalid filename.", status_code=400)
@@ -135,7 +155,10 @@ async def handle_delete(version: str, filename: str):
 
 
 @router.get("/merge/{version}", response_class=FileResponse)
-async def handle_merge(version: str):
+async def handle_merge(
+    version: str,
+    client_ip: str = Depends(verify_ip_whitelist)
+):
     """
     UPDATED: This endpoint now dynamically finds the header in each data file
     by comparing it to the template's header.
