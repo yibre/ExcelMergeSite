@@ -86,7 +86,7 @@ async def handle_upload_template(file: UploadFile = File(...)):
 async def handle_upload_master(version: str, file: UploadFile = File(...)):
     now = datetime.now()
     timestamp = now.strftime("%y%m%d_%H시%M분")
-    filename = f"master_{timestamp}.xlsx"
+    filename = f"master_{version}_{timestamp}.xlsx"
     results_dir = os.path.join(get_version_dir(version), "results")
     file_path = os.path.join(results_dir, filename)
     with open(file_path, "wb") as buffer:
