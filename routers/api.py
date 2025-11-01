@@ -1,6 +1,7 @@
 import os
 import shutil
 import openpyxl
+import json
 from datetime import datetime
 from fastapi import Request, UploadFile, File, APIRouter, Query, HTTPException, Depends
 from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
@@ -13,6 +14,7 @@ UPLOADS_DIR = "uploads"
 TEMPLATE_FILENAME = "template.xlsx"
 MASTER_MERGE_FILENAME = "master.xlsx"
 VERSIONS = ["ver1", "ver2"]
+FILE_OWNERSHIP_PATH = "json/file_ownership.json"
 
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 for version in VERSIONS:
@@ -30,9 +32,35 @@ def get_version_dir(version: str):
     return os.path.join(UPLOADS_DIR, version)
 
 
+# --- 파일 소유권 관리 함수들 ---
+def load_file_ownership():
+    """파일 소유권 정보 로드"""
+    if os.path.exists(FILE_OWNERSHIP_PATH):
+        with open(FILE_OWNERSHIP_PATH, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return {}
+
+def save_file_ownership(data):
+    """파일 소유권 정보 저장"""
+    with open(FILE_OWNERSHIP_PATH, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+def register_file_owner(version: str, filename: str, ip: str):
+    """파일 업로드 시 소유자 IP 등록"""
+    ownership = load_file_ownership()
+    if version not in ownership:
+        ownership[version] = {}
+    ownership[version][filename] = ip
+    save_file_ownership(ownership)
+
+def check_file_owner(version: str, filename: str, ip: str) -> bool:
+    """현재 IP가 해당 파일의 소유자인지 확인"""
+    ownership = load_file_ownership()
+    return ownership.get(version, {}).get(filename) == ip
+
 
 @router.get("/", response_class=HTMLResponse)
-async def read_home(request: Request):
+async def read_home(request: Request, client_ip: str = Depends(verify_ip_whitelist)):
     """
     This endpoint serves the home page.
     It now separates the template file from the data files for display.
@@ -56,6 +84,10 @@ async def read_home(request: Request):
         results_files1 = []
         results_files2 = []
 
+    # 삭제 가능 여부 판단 (일반 데이터 파일만)
+    deletable_files1 = {f: check_file_owner("ver1", f, client_ip) for f in data_files1}
+    deletable_files2 = {f: check_file_owner("ver2", f, client_ip) for f in data_files2}
+
     context = {
         "request": request,
         "title": "Home Page - File Uploader",
@@ -66,7 +98,9 @@ async def read_home(request: Request):
         "data_files2": data_files2, # ver2에 올라간 파일 리스트
         "results_files1": results_files1, # ver1/results에 올라간 파일 리스트
         "results_files2": results_files2, # ver2/results에 올라간 파일 리스트
-        "master_merge_filename": MASTER_MERGE_FILENAME
+        "master_merge_filename": MASTER_MERGE_FILENAME,
+        "deletable_files1": deletable_files1,
+        "deletable_files2": deletable_files2
     }
     return templates.TemplateResponse("home.html", context)
 
@@ -117,6 +151,10 @@ async def handle_upload(
         return HTMLResponse(content="Cannot upload a data file with the name 'template.xlsx'. Please use the dedicated template upload button.", status_code=400)
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
+
+    # IP 등록
+    register_file_owner(version, file.filename, client_ip)
+
     return RedirectResponse(url="/", status_code=303)
 
 
@@ -142,9 +180,15 @@ async def handle_delete(
     filename: str,
     client_ip: str = Depends(verify_ip_whitelist)
 ):
-    file_path = os.path.join(get_version_dir(version), filename)
     if ".." in filename or filename.startswith("/"):
         return HTMLResponse(content="Invalid filename.", status_code=400)
+
+    # results 폴더가 아닌 일반 파일의 경우 권한 검증
+    if not filename.startswith("results/"):
+        if not check_file_owner(version, filename, client_ip):
+            return HTMLResponse(content="삭제 권한이 없습니다. 본인이 업로드한 파일만 삭제할 수 있습니다.", status_code=403)
+
+    file_path = os.path.join(get_version_dir(version), filename)
     if os.path.exists(file_path):
         try:
             os.remove(file_path)

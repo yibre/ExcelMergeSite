@@ -73,6 +73,7 @@ async def verify_ip_whitelist(request: Request) -> str:
     """
     client_ip = get_client_ip(request)
     allowed_ips = load_allowed_ips()
+    print("current ip is", client_ip)
 
     if client_ip not in allowed_ips:
         raise HTTPException(

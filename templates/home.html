@@ -55,6 +55,7 @@
 
             <h2 class="text-xl font-semibold mb-2">파일 리스트:</h2>
             {% set current_files = data_files1 if version == "ver1" else data_files2 %}
+            {% set deletable_dict = deletable_files1 if version == "ver1" else deletable_files2 %}
             {% if current_files %}
                 <ul class="space-y-3">
                     {% for file in current_files %}
@@ -63,7 +64,11 @@
                         <span class="font-mono text-gray-700 truncate pr-2">{{ file }}</span>
                         <div class="flex items-center space-x-2 flex-shrink-0">
                             <a href="/download/{{version}}/{{ file }}" class="px-3 py-1 bg-green-500 text-white text-sm font-semibold rounded-full hover:bg-green-600">다운</a>
-                            <a href="/delete/{{version}}/{{ file }}" class="px-3 py-1 bg-red-500 text-white text-sm font-semibold rounded-full hover:bg-red-600" onclick="return confirm('Are you sure you want to delete this file?');">삭제</a>
+                            {% if deletable_dict.get(file, False) %}
+                                <a href="/delete/{{version}}/{{ file }}" class="px-3 py-1 bg-red-500 text-white text-sm font-semibold rounded-full hover:bg-red-600" onclick="return confirm('Are you sure you want to delete this file?');">삭제</a>
+                            {% else %}
+                                <span class="px-3 py-1 bg-gray-300 text-gray-500 text-sm font-semibold rounded-full cursor-not-allowed">삭제</span>
+                            {% endif %}
                         </div>
                     </li>
                     {% endif %}
