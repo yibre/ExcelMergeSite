@@ -169,13 +169,11 @@ async def upload_masterdb(
     version: str,
     file: UploadFile = File(...),
 ):
-    file_path = os.path.join(get_version_dir(version), file.filename)
-    master_dir = os.path.join(get_version_dir(version), "masterdb")
-    file_path = os.path.join(master_dir, filename)
+    masterdb_dir = os.path.join(get_version_dir(version), "masterdb")
+    file_path = os.path.join(masterdb_dir, file.filename)
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     return RedirectResponse(url="/", status_code=303)
-
 
 
 @router.get("/download/{version}/{filename:path}", response_class=FileResponse)

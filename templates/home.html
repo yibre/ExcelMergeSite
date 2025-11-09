@@ -138,12 +138,12 @@
                 </button>
             </form>
 
-            <h2 class="text-xl font-semibold mb-2">결과 파일 리스트:</h2>
+            <h2 class="text-xl font-semibold mb-2">마스터 DB 파일 리스트:</h2>
             {% set current_results = masterdb_files1 if version == "ver1" else masterdb_files2 %}
             {% if current_results %}
                 <ul class="space-y-3">
                     {% for file in current_results %}
-                    {% if file.endswith('.xlsx') or file.endswith('.xls') %}
+                    {% if file.endswith('.xlsx') or file.endswith('.xls') or file.endswith('.zip') %}
                     <li class="flex items-center justify-between bg-gray-50 p-3 rounded-md hover:bg-gray-100">
                         <span class="font-mono text-gray-700 truncate pr-2">{{ file }}</span>
                         <div class="flex items-center space-x-2 flex-shrink-0">
@@ -154,7 +154,7 @@
                     {% endfor %}
                 </ul>
             {% else %}
-                <p class="text-center text-gray-500">업로드된 결과 파일 없음</p>
+                <!-- <p class="text-center text-gray-500">업로드된 마스터 DB 파일 없음</p> -->
             {% endif %}
 
         </div>
