@@ -267,12 +267,7 @@ async def handle_merge(
     return FileResponse(path=output_path, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=output_filename)
     
 
-@router.get("/about", response_class=HTMLResponse)
+@router.get("/detail", response_class=HTMLResponse)
 async def read_about(request: Request):
-    context = {
-        "request": request,
-        "title": "About Us",
-        "description": "This is a page explaining what our site is about."
-    }
-    return templates.TemplateResponse("about.html", context)
+    return OSError
 

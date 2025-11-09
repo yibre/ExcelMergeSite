@@ -3,100 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>엑셀 파일 보기 - {{ filename }}</title>
+    <title>엑셀 파일 뷰어</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 min-h-screen py-8">
-    <div class="container mx-auto px-4">
-        <div class="bg-white rounded-lg shadow-lg p-6">
-            <div class="flex justify-between items-center mb-6">
-                <div>
-                    <h1 class="text-2xl font-bold text-gray-800">{{ filename }}</h1>
-                    <p class="text-sm text-gray-600 mt-1">총 {{ sheets_data|length }}개 시트</p>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">엑셀 파일 뷰어</h1>
+        
+        <form action="/detail" method="post" enctype="multipart/form-data" class="space-y-4">
+            <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition">
+                <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <div class="mt-4">
+                    <label for="file" class="cursor-pointer">
+                        <span class="mt-2 text-sm text-gray-600">
+                            엑셀 파일을 선택하거나 드래그하세요
+                        </span>
+                        <input 
+                            id="file" 
+                            name="file" 
+                            type="file" 
+                            accept=".xlsx,.xls,.xlsm" 
+                            class="hidden"
+                            required
+                        >
+                    </label>
                 </div>
-                <a href="/" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
-                    다른 파일 업로드
-                </a>
+                <p class="text-xs text-gray-500 mt-2">xlsx, xls, xlsm 형식 지원</p>
             </div>
-
-            {% if sheets_data|length > 1 %}
-            <!-- 시트 탭 -->
-            <div class="border-b border-gray-200 mb-6">
-                <nav class="flex space-x-4 overflow-x-auto">
-                    {% for sheet_name in sheets_data.keys() %}
-                    <button 
-                        class="sheet-tab px-4 py-2 text-sm font-medium rounded-t-lg transition whitespace-nowrap
-                               {% if loop.first %}bg-blue-600 text-white{% else %}text-gray-600 hover:text-gray-800 hover:bg-gray-100{% endif %}"
-                        data-sheet="{{ sheet_name }}"
-                    >
-                        {{ sheet_name }}
-                    </button>
-                    {% endfor %}
-                </nav>
-            </div>
-            {% endif %}
-
-            <!-- 시트 컨텐츠 -->
-            {% for sheet_name, sheet_info in sheets_data.items() %}
-            <div class="sheet-content overflow-x-auto {% if not loop.first %}hidden{% endif %}" data-sheet="{{ sheet_name }}">
-                <table class="min-w-full divide-y divide-gray-200 border border-gray-300">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            {% for col in sheet_info.columns %}
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r border-gray-300 whitespace-nowrap">
-                                {{ col }}
-                            </th>
-                            {% endfor %}
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        {% for row in sheet_info.data %}
-                        <tr class="{% if loop.index % 2 == 0 %}bg-gray-50{% endif %} hover:bg-blue-50 transition">
-                            {% for cell in row %}
-                            <td class="px-4 py-3 text-sm text-gray-900 border-r border-gray-300 whitespace-nowrap">
-                                {{ cell }}
-                            </td>
-                            {% endfor %}
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                
-                {% if sheet_info.data|length == 0 %}
-                <div class="text-center py-8 text-gray-500">
-                    이 시트에는 데이터가 없습니다.
-                </div>
-                {% else %}
-                <div class="mt-4 text-sm text-gray-600">
-                    총 {{ sheet_info.data|length }}행 × {{ sheet_info.columns|length }}열
-                </div>
-                {% endif %}
-            </div>
-            {% endfor %}
-        </div>
+            
+            <button 
+                type="submit" 
+                class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-semibold"
+            >
+                파일 업로드 및 보기
+            </button>
+        </form>
+        
+        <div id="fileName" class="mt-4 text-sm text-gray-600 text-center hidden"></div>
     </div>
 
     <script>
-        // 시트 탭 전환 기능
-        const tabs = document.querySelectorAll('.sheet-tab');
-        const contents = document.querySelectorAll('.sheet-content');
-
-        tabs.forEach(tab => {
-            tab.addEventListener('click', function() {
-                const sheetName = this.getAttribute('data-sheet');
-                
-                // 모든 탭과 컨텐츠 비활성화
-                tabs.forEach(t => {
-                    t.classList.remove('bg-blue-600', 'text-white');
-                    t.classList.add('text-gray-600', 'hover:text-gray-800', 'hover:bg-gray-100');
-                });
-                contents.forEach(c => c.classList.add('hidden'));
-                
-                // 선택된 탭과 컨텐츠 활성화
-                this.classList.remove('text-gray-600', 'hover:text-gray-800', 'hover:bg-gray-100');
-                this.classList.add('bg-blue-600', 'text-white');
-                document.querySelector(`.sheet-content[data-sheet="${sheetName}"]`).classList.remove('hidden');
-            });
+        const fileInput = document.getElementById('file');
+        const fileNameDiv = document.getElementById('fileName');
+        
+        fileInput.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                fileNameDiv.textContent = '선택된 파일: ' + e.target.files[0].name;
+                fileNameDiv.classList.remove('hidden');
+            }
         });
     </script>
 </body>
