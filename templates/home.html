@@ -119,6 +119,44 @@
                 <p class="text-center text-gray-500">업로드된 결과 파일 없음</p>
             {% endif %}
 
+             <!-- 마스터 DB 파일 업로드 -->
+            <form action="/upload/{{version}}/masterdb" method="post" enctype="multipart/form-data" class="mb-6 p-4 py-2 my-2 border-2 border-dashed rounded-lg">
+                <div class="mb-2">
+                    <label for="data_file" class="block text-gray-700 text-sm font-bold mb-2">마스터 DB 파일 업로드:</label>
+                    <input type="file" name="file" id="data_file" required
+                        class="block w-full text-sm text-gray-500
+                                file:mr-4 file:py-2 file:px-4
+                                file:rounded-full file:border-0
+                                file:text-sm file:font-semibold
+                                file:bg-blue-50 file:text-blue-700
+                                hover:file:bg-blue-100"
+                        accept=".xlsx, .xls, .csv, .zip">
+                </div>
+                <button type="submit"
+                        class="w-full px-6 py-3 bg-green-300 text-white font-semibold rounded-lg shadow-md hover:bg-green-400 transition-colors">
+                    업로드
+                </button>
+            </form>
+
+            <h2 class="text-xl font-semibold mb-2">결과 파일 리스트:</h2>
+            {% set current_results = masterdb_files1 if version == "ver1" else masterdb_files2 %}
+            {% if current_results %}
+                <ul class="space-y-3">
+                    {% for file in current_results %}
+                    {% if file.endswith('.xlsx') or file.endswith('.xls') %}
+                    <li class="flex items-center justify-between bg-gray-50 p-3 rounded-md hover:bg-gray-100">
+                        <span class="font-mono text-gray-700 truncate pr-2">{{ file }}</span>
+                        <div class="flex items-center space-x-2 flex-shrink-0">
+                            <a href="/download/{{version}}/masterdb/{{ file }}" class="px-3 py-1 bg-green-500 text-white text-sm font-semibold rounded-full hover:bg-green-600">다운</a>
+                           </div>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-center text-gray-500">업로드된 결과 파일 없음</p>
+            {% endif %}
+
         </div>
     {% endfor %}
 </div>

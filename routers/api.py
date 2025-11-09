@@ -20,6 +20,7 @@ os.makedirs(UPLOADS_DIR, exist_ok=True)
 for version in VERSIONS:
     os.makedirs(os.path.join(UPLOADS_DIR, version), exist_ok=True)
     os.makedirs(os.path.join(UPLOADS_DIR, version, "results"), exist_ok=True)
+    os.makedirs(os.path.join(UPLOADS_DIR, version, "masterdb"), exist_ok=True)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -76,12 +77,18 @@ async def read_home(request: Request, client_ip: str = Depends(verify_ip_whiteli
         # results 폴더의 파일 리스트 가져오기
         results_files1 = os.listdir(UPLOADS_DIR+"/ver1/results")
         results_files2 = os.listdir(UPLOADS_DIR+"/ver2/results")
+
+        # masterdb 폴더의 파일 리스트 가져오기
+        masterdb_files1 = os.listdir(UPLOADS_DIR+"/ver1/masterdb")
+        masterdb_files2 = os.listdir(UPLOADS_DIR+"/ver2/masterdb")
     except OSError:
         template_file = None
         data_files1 = []
         data_files2 = []
         results_files1 = []
         results_files2 = []
+        masterdb_files1 = []
+        masterdb_files2 = []
 
     # 삭제 가능 여부 판단 (일반 데이터 파일만)
     deletable_files1 = {f: check_file_owner("ver1", f, client_ip) for f in data_files1}
@@ -99,7 +106,9 @@ async def read_home(request: Request, client_ip: str = Depends(verify_ip_whiteli
         "results_files2": results_files2, # ver2/results에 올라간 파일 리스트
         "master_merge_filename": MASTER_MERGE_FILENAME,
         "deletable_files1": deletable_files1,
-        "deletable_files2": deletable_files2
+        "deletable_files2": deletable_files2,
+        "masterdb_files1": masterdb_files1,
+        "masterdb_files2": masterdb_files2
     }
     return templates.TemplateResponse("home.html", context)
 
@@ -141,9 +150,6 @@ async def handle_upload(
     file: UploadFile = File(...),
     client_ip: str = Depends(verify_ip_whitelist)
 ):
-    """
-    This endpoint handles the data file uploads.
-    """
     file_path = os.path.join(get_version_dir(version), file.filename)
     # Prevent overwriting the template with a data file of the same name
     if file.filename == TEMPLATE_FILENAME:
@@ -154,6 +160,20 @@ async def handle_upload(
     # IP 등록
     register_file_owner(version, file.filename, client_ip)
 
+    return RedirectResponse(url="/", status_code=303)
+
+
+# 마스터 DB 업로드
+@router.post("/upload/{version}/masterdb", response_class=RedirectResponse)
+async def upload_masterdb(
+    version: str,
+    file: UploadFile = File(...),
+):
+    file_path = os.path.join(get_version_dir(version), file.filename)
+    master_dir = os.path.join(get_version_dir(version), "masterdb")
+    file_path = os.path.join(master_dir, filename)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
     return RedirectResponse(url="/", status_code=303)
 
 
@@ -194,7 +214,6 @@ async def handle_delete(
         except OSError as e:
             print(f"Error deleting file {filename}: {e}")
     return RedirectResponse(url="/", status_code=303)
-
 
 
 @router.get("/merge/{version}", response_class=FileResponse)
