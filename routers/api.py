@@ -271,3 +271,11 @@ async def handle_merge(
 async def read_about(request: Request):
     return OSError
 
+
+@router.get("/diagram", response_class=HTMLResponse)
+async def read_diagram(request: Request):
+    """
+    This endpoint serves the interactive diagram page.
+    """
+    return templates.TemplateResponse("diagram.html", {"request": request})
+

@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+
+{% block title %}Interactive Diagram{% endblock %}
+
+{% block content %}
+<style>
+    .diagram-container {
+        display: flex;
+        gap: 40px;
+        align-items: flex-start;
+    }
+
+    .diagram-wrapper {
+        position: relative;
+        width: 1000px;
+        height: 450px;
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .box {
+        position: absolute;
+        border: 2px solid #333;
+        padding: 15px 30px;
+        font-weight: bold;
+        font-size: 24px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+    }
+
+    .box:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    .box.active {
+        box-shadow: 0 0 0 3px #3b82f6;
+    }
+
+    #box-aaa {
+        top: 20px;
+        left: 450px;
+        width: 280px;
+        background: #ADD8E6;
+    }
+
+    #box-bbb {
+        top: 210px;
+        left: 210px;
+        width: 180px;
+        background: #FFE4D6;
+    }
+
+    #box-ddd {
+        top: 210px;
+        left: 800px;
+        width: 180px;
+        background: #FFE4D6;
+    }
+
+    #box-ccc {
+        top: 180px;
+        left: 30px;
+        width: 120px;
+        height: 40px;
+        padding: 8px 15px;
+        font-size: 18px;
+        background: #C1E1C1;
+    }
+
+    #box-eee {
+        top: 240px;
+        left: 30px;
+        width: 120px;
+        height: 40px;
+        padding: 8px 15px;
+        font-size: 18px;
+        background: #C1E1C1;
+    }
+
+    #box-fff {
+        top: 300px;
+        left: 30px;
+        width: 120px;
+        height: 40px;
+        padding: 8px 15px;
+        font-size: 18px;
+        background: #C1E1C1;
+    }
+
+    svg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+    }
+
+    .table-container {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        min-width: 400px;
+        max-width: 600px;
+    }
+
+    .table-container.hidden {
+        display: none;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+
+    th, td {
+        border: 1px solid #ddd;
+        padding: 12px;
+        text-align: left;
+    }
+
+    th {
+        background-color: #f3f4f6;
+        font-weight: bold;
+    }
+
+    tr:hover {
+        background-color: #f9fafb;
+    }
+
+    h2 {
+        margin: 0 0 15px 0;
+        color: #1f2937;
+    }
+</style>
+
+<div class="diagram-container">
+    <div class="diagram-wrapper">
+        <!-- SVG for connection lines -->
+        <svg>
+            <!-- Red lines: AAA -> DDD -> BBB -->
+            <path d="M 730 70 L 890 70 L 890 220" stroke="red" stroke-width="4" fill="none"/>
+            <path d="M 890 280 L 890 320 L 300 320 L 300 280" stroke="red" stroke-width="4" fill="none"/>
+            <path d="M 300 220 L 300 140 L 450 140 L 450 70" stroke="red" stroke-width="4" fill="none"/>
+
+            <!-- Blue lines: BBB -> AAA (two connections) -->
+            <line x1="300" y1="220" x2="530" y2="100" stroke="#4A90E2" stroke-width="3"/>
+            <line x1="390" y1="220" x2="570" y2="100" stroke="#4A90E2" stroke-width="3"/>
+        </svg>
+
+        <!-- Boxes -->
+        <div class="box" id="box-aaa" onclick="showTable('aaa')">AAA</div>
+        <div class="box" id="box-bbb" onclick="showTable('bbb')">BBB</div>
+        <div class="box" id="box-ddd" onclick="showTable('ddd')">DDD</div>
+        <div class="box" id="box-ccc" onclick="showTable('ccc')">ccc</div>
+        <div class="box" id="box-eee" onclick="showTable('eee')">eee</div>
+        <div class="box" id="box-fff" onclick="showTable('fff')">fff</div>
+    </div>
+
+    <div id="table-display" class="table-container hidden">
+        <h2 id="table-title">Select a box to view data</h2>
+        <div id="table-content"></div>
+    </div>
+</div>
+
+<script>
+    const tableData = {
+        aaa: {
+            title: "AAA Component Details",
+            headers: ["Property", "Value"],
+            rows: [
+                ["Name", "Component AAA"],
+                ["Type", "Main Controller"],
+                ["Status", "Active"],
+                ["Priority", "High"],
+                ["Connections", "BBB, DDD"]
+            ]
+        },
+        bbb: {
+            title: "BBB Component Details",
+            headers: ["Property", "Value"],
+            rows: [
+                ["Name", "Component BBB"],
+                ["Type", "Processing Unit"],
+                ["Status", "Running"],
+                ["Priority", "Medium"],
+                ["Connections", "AAA, DDD, ccc, eee, fff"]
+            ]
+        },
+        ddd: {
+            title: "DDD Component Details",
+            headers: ["Property", "Value"],
+            rows: [
+                ["Name", "Component DDD"],
+                ["Type", "Processing Unit"],
+                ["Status", "Running"],
+                ["Priority", "Medium"],
+                ["Connections", "AAA, BBB"]
+            ]
+        },
+        ccc: {
+            title: "ccc Sub-component Details",
+            headers: ["Property", "Value"],
+            rows: [
+                ["Name", "Sub-component ccc"],
+                ["Type", "Input Handler"],
+                ["Status", "Active"],
+                ["Parent", "BBB"]
+            ]
+        },
+        eee: {
+            title: "eee Sub-component Details",
+            headers: ["Property", "Value"],
+            rows: [
+                ["Name", "Sub-component eee"],
+                ["Type", "Data Processor"],
+                ["Status", "Active"],
+                ["Parent", "BBB"]
+            ]
+        },
+        fff: {
+            title: "fff Sub-component Details",
+            headers: ["Property", "Value"],
+            rows: [
+                ["Name", "Sub-component fff"],
+                ["Type", "Output Handler"],
+                ["Status", "Active"],
+                ["Parent", "BBB"]
+            ]
+        }
+    };
+
+    function showTable(boxId) {
+        // Remove active class from all boxes
+        document.querySelectorAll('.box').forEach(box => {
+            box.classList.remove('active');
+        });
+
+        // Add active class to clicked box
+        document.getElementById('box-' + boxId).classList.add('active');
+
+        // Get table data
+        const data = tableData[boxId];
+
+        // Update table title
+        document.getElementById('table-title').textContent = data.title;
+
+        // Build table HTML
+        let tableHTML = '<table>';
+        tableHTML += '<thead><tr>';
+        data.headers.forEach(header => {
+            tableHTML += `<th>${header}</th>`;
+        });
+        tableHTML += '</tr></thead><tbody>';
+
+        data.rows.forEach(row => {
+            tableHTML += '<tr>';
+            row.forEach(cell => {
+                tableHTML += `<td>${cell}</td>`;
+            });
+            tableHTML += '</tr>';
+        });
+
+        tableHTML += '</tbody></table>';
+
+        // Update table content
+        document.getElementById('table-content').innerHTML = tableHTML;
+
+        // Show table container
+        document.getElementById('table-display').classList.remove('hidden');
+    }
+</script>
+
+<div class="mt-8 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+    <p class="text-sm text-gray-700">
+        <strong>Instructions:</strong> Click on any box in the diagram to view its details in the table on the right.
+    </p>
+</div>
+{% endblock %}
