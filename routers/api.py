@@ -270,4 +270,3 @@ async def handle_merge(
 @router.get("/detail", response_class=HTMLResponse)
 async def read_about(request: Request):
     return OSError
-
