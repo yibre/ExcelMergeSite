@@ -47,17 +47,28 @@ def save_file_ownership(data):
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 def register_file_owner(version: str, filename: str, ip: str):
-    """파일 업로드 시 소유자 IP 등록"""
+    """파일 업로드 시 소유자 IP 등록 (날짜/시간 포함)"""
     ownership = load_file_ownership()
     if version not in ownership:
         ownership[version] = {}
-    ownership[version][filename] = ip
+
+    now = datetime.now()
+    upload_info = {
+        "ip": ip,
+        "upload_date": now.strftime("%Y-%m-%d"),
+        "upload_time": now.strftime("%H:%M:%S")
+    }
+    ownership[version][filename] = upload_info
     save_file_ownership(ownership)
 
 def check_file_owner(version: str, filename: str, ip: str) -> bool:
     """현재 IP가 해당 파일의 소유자인지 확인"""
     ownership = load_file_ownership()
-    return ownership.get(version, {}).get(filename) == ip
+    file_info = ownership.get(version, {}).get(filename)
+    if isinstance(file_info, dict):
+        return file_info.get("ip") == ip
+    # 이전 버전 호환성 (IP만 문자열로 저장된 경우)
+    return file_info == ip
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -154,10 +165,29 @@ async def handle_upload(
     # Prevent overwriting the template with a data file of the same name
     if file.filename == TEMPLATE_FILENAME:
         return HTMLResponse(content="Cannot upload a data file with the name 'template.xlsx'. Please use the dedicated template upload button.", status_code=400)
+
+    # 임시로 파일 저장
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # IP 등록
+    # A5 셀 검증
+    try:
+        wb = openpyxl.load_workbook(file_path)
+        ws = wb.active
+        a5_value = ws['A5'].value
+        wb.close()
+
+        # A5 셀이 비어있거나 None이면 업로드 거부
+        if a5_value is None or str(a5_value).strip() == "":
+            os.remove(file_path)  # 업로드된 파일 삭제
+            return HTMLResponse(content="DRM을 해제해 평문으로 올려주세요", status_code=400)
+    except Exception as e:
+        # 파일 읽기 오류 시 파일 삭제
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        return HTMLResponse(content=f"파일을 읽는 중 오류가 발생했습니다: {str(e)}", status_code=400)
+
+    # A5 셀에 데이터가 있으면 IP와 업로드 정보 등록
     register_file_owner(version, file.filename, client_ip)
 
     return RedirectResponse(url="/", status_code=303)
