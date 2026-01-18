@@ -2,6 +2,7 @@ from fastapi import FastAPI
 import uvicorn
 import routers.api as api
 import routers.search as search
+import routers.menu as menu
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 
@@ -15,6 +16,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # router 추가
 app.include_router(api.router)
 app.include_router(search.router)
+app.include_router(menu.router)
 
 
 # run server by 'python main.py' in windows

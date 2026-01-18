@@ -271,7 +271,6 @@ async def handle_merge(
     # 4번째 줄까지는 헤더, 다섯번째 줄 이후부터 합치기 시작
     template_header = [cell.value for cell in merged_ws[4]]
     
-    
     files_to_merge = [f for f in os.listdir(get_version_dir(version)) if f.endswith('.xlsx') and f not in [TEMPLATE_FILENAME, output_filename, MASTER_MERGE_FILENAME]]
 
     for filename in files_to_merge:
