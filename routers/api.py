@@ -145,9 +145,10 @@ async def handle_upload_master(
     file: UploadFile = File(...),
     client_ip: str = Depends(verify_ip_whitelist)
 ):
+    """결과 파일 올리기"""
     now = datetime.now()
     timestamp = now.strftime("%y%m%d_%H시%M분")
-    filename = f"master_{version}_{timestamp}.xlsx"
+    filename = f"result_{version}_{timestamp}.xlsx"
     results_dir = os.path.join(get_version_dir(version), "results")
     file_path = os.path.join(results_dir, filename)
     with open(file_path, "wb") as buffer:
@@ -250,18 +251,25 @@ async def handle_merge(
     client_ip: str = Depends(verify_ip_whitelist)
 ):
     """
+    uploads/template.xlsx를 베이스로 사용하여
     uploads/{version} 내의 모든 엑셀 파일을 하나로 합치기
     - 각 파일의 5번째 행부터 데이터 가져오기 (1-4행 스킵)
-    - 각 행의 E열(5번째)부터 K열(11번째)까지만 복사 (A-D열 스킵)
+    - template.xlsx의 5번째 행부터 데이터 붙여넣기
+    - 각 행의 마지막 데이터가 있는 열까지만 복사
     """
+    # template.xlsx 확인
+    template_path = os.path.join(UPLOADS_DIR, TEMPLATE_FILENAME)
+    if not os.path.exists(template_path):
+        raise HTTPException(status_code=404, detail="template.xlsx 파일이 없습니다.")
+
     # 현재 시간으로 파일명 생성
     now = datetime.now()
     timestamp = now.strftime("%y%m%d_%H_%M")
     output_filename = f"merged_output_{version}_{timestamp}.xlsx"
-    output_path = os.path.join(get_version_dir(version), output_filename)
+    output_path = os.path.join(get_version_dir(version)+"/mergedoutput", output_filename)
 
-    # 새 워크북 생성
-    merged_wb = openpyxl.Workbook()
+    # template.xlsx를 베이스로 워크북 로드
+    merged_wb = openpyxl.load_workbook(template_path)
     merged_ws = merged_wb.active
 
     # uploads/{version} 폴더의 모든 xlsx 파일 가져오기
@@ -269,17 +277,17 @@ async def handle_merge(
                       if f.endswith('.xlsx') and f != output_filename
                       and not f.startswith('merged_output_')]
 
+    # 현재 붙여넣기를 시작할 행 번호 (5번째 행부터 시작)
+    current_row = 5
+
     # 각 파일을 순회하며 데이터 복사
-    for idx, filename in enumerate(files_to_merge):
+    for filename in files_to_merge:
         filepath = os.path.join(get_version_dir(version), filename)
         source_wb = openpyxl.load_workbook(filepath)
         source_ws = source_wb.active
 
-        # 첫 번째 파일은 1번째 열부터, 나머지는 5번째 열부터
-        start_row = 1 if idx == 0 else 5
-
-        # K열(11)까지 모든 행 읽기 (중간에 빈 열이 있어도 뒤에 데이터가 있을 수 있음)
-        for row in source_ws.iter_rows(min_row=start_row, max_col=11, values_only=True):
+        # 5번째 행부터 데이터 읽기
+        for row in source_ws.iter_rows(min_row=5, max_col=11, values_only=True):
             # 행에 데이터가 있는지 확인
             if any(cell is not None for cell in row):
                 # 뒤에서부터 확인해서 마지막 데이터가 있는 열 찾기
@@ -291,7 +299,9 @@ async def handle_merge(
 
                 # 마지막 데이터가 있는 열까지만 복사
                 if last_data_idx is not None:
-                    merged_ws.append(row[:last_data_idx + 1])
+                    for col_idx, cell_value in enumerate(row[:last_data_idx + 1], start=1):
+                        merged_ws.cell(row=current_row, column=col_idx, value=cell_value)
+                    current_row += 1
 
         source_wb.close()
 
