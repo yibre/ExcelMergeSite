@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from routers.authentification import verify_ip_whitelist
+from routers.menu import match_agenda_user
 
 # --- Configuration ---
 UPLOADS_DIR = "uploads"
@@ -15,6 +16,8 @@ TEMPLATE_FILENAME = "template.xlsx"
 MASTER_MERGE_FILENAME = "master.xlsx"
 VERSIONS = ["ver1", "ver2"]
 FILE_OWNERSHIP_PATH = "json/file_ownership.json"
+# Keywords to match in uploaded result filenames for agenda tracking
+AGENDA_KEYWORDS = ["김철수", "이영희"]
 
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 for version in VERSIONS:
@@ -139,8 +142,8 @@ async def handle_upload_template(
     return RedirectResponse(url="/", status_code=303)
 
 
-@router.post("/upload_master/{version}", response_class=RedirectResponse)
-async def handle_upload_master(
+@router.post("/upload_result/{version}", response_class=RedirectResponse)
+async def upload_result(
     version: str,
     file: UploadFile = File(...),
     client_ip: str = Depends(verify_ip_whitelist)
@@ -190,6 +193,9 @@ async def handle_upload(
 
     # A5 셀에 데이터가 있으면 IP와 업로드 정보 등록
     register_file_owner(version, file.filename, client_ip)
+
+    # Check if filename contains any agenda keywords and update agenda_no.json
+    match_agenda_user(file.filename, version, file_path, AGENDA_KEYWORDS)
 
     return RedirectResponse(url="/", status_code=303)
 

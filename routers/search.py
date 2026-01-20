@@ -32,13 +32,13 @@ def search_key_in_excel(version: str, key_value: str) -> list[dict]:
     """
     matching_rows = []
     try:
-        # version/results 디렉토리에서 'master'로 시작하는 파일 찾기
+        # version/results 디렉토리에서 'result'로 시작하는 파일 찾기
         version_dir = get_version_dir(version)
         results_dir = os.path.join(version_dir, "results")
-        master_files = [f for f in os.listdir(results_dir) if f.startswith('master') and f.endswith('.xlsx')]
+        master_files = [f for f in os.listdir(results_dir) if f.startswith('result') and f.endswith('.xlsx')]
 
         if not master_files:
-            raise HTTPException(status_code=404, detail=f"'{version}/results' 디렉토리에서 'master'로 시작하는 파일을 찾을 수 없습니다.")
+            raise HTTPException(status_code=404, detail=f"'{version}/results' 디렉토리에서 'result'로 시작하는 파일을 찾을 수 없습니다.")
 
         # 가장 최근 파일 사용 (파일명 기준 정렬)
         master_file = sorted(master_files)[-1]
@@ -56,25 +56,6 @@ def search_key_in_excel(version: str, key_value: str) -> list[dict]:
                     # 빈 셀(None)은 빈 문자열로 변환하여 추가
                     clean_row = ["" if cell is None else cell for cell in row]
                     matching_rows.append(clean_row)
-
-        # 옵션 2 데이터 셀 색까지 추출하기
-        """
-        # 헤더를 제외하고 다섯번째 행부터 순회
-        # values_only=False로 설정하여 셀 객체를 가져와 스타일 정보 추출
-        for row in sheet.iter_rows(min_row=5, values_only=False):
-            # 행에 데이터가 있고, 두 번째 열이 존재하는지 확인
-            if len(row) > 1 and row[1].value is not None:
-                # 두 번째 열(인덱스 1)의 값을 문자열로 변환하여 비교
-                if str(row[1].value).strip() == str(key_value).strip():
-                    # 셀 값과 스타일 추출
-                    cell_values = ["" if cell.value is None else cell.value for cell in row]
-                    cell_styles = [get_cell_styles(cell) for cell in row]
-
-                    matching_rows.append({
-                        'cells': cell_values,
-                        'styles': cell_styles
-                    })
-        """
 
     except Exception as e:
         # 파일 처리 중 오류 발생 시 예외 처리
