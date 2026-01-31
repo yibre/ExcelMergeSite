@@ -64,6 +64,62 @@ def search_key_in_excel(version: str, key_value: str) -> list[dict]:
     return matching_rows
 
 
+def search_signal_in_excel(version: str, search_keyword: str) -> list[dict]:
+    """
+    엑셀 파일의 A, F, G, H, I열에서 search_keyword를 포함하는 모든 행 찾기
+
+    Args:
+        version (str): 버전 디렉토리 (ver1 또는 ver2)
+        search_keyword (str): 검색할 키워드 (문자열)
+
+    Returns:
+        List[dict]: 키워드를 포함하는 모든 행의 데이터.
+    """
+    matching_rows = []
+    try:
+        # version/results 디렉토리에서 'result'로 시작하는 파일 찾기
+        version_dir = get_version_dir(version)
+        results_dir = os.path.join(version_dir, "results")
+        master_files = [f for f in os.listdir(results_dir) if f.startswith('result') and f.endswith('.xlsx')]
+
+        if not master_files:
+            raise HTTPException(status_code=404, detail=f"'{version}/results' 디렉토리에서 'result'로 시작하는 파일을 찾을 수 없습니다.")
+
+        # 가장 최근 파일 사용 (파일명 기준 정렬)
+        master_file = sorted(master_files)[-1]
+        master_path = os.path.join(results_dir, master_file)
+
+        workbook = openpyxl.load_workbook(master_path)
+        sheet = workbook.active
+
+        # A, F, G, H, I열 (인덱스 0, 5, 6, 7, 8)에서 검색
+        search_columns = [0, 5, 6, 7, 8]
+
+        for row in sheet.iter_rows(min_row=5, values_only=True):
+            # 행에 데이터가 있는지 확인
+            if len(row) > max(search_columns):
+                # 지정된 열 중 하나라도 키워드를 포함하면 해당 행 추가
+                found = False
+                for col_idx in search_columns:
+                    cell_value = row[col_idx]
+                    if cell_value is not None and search_keyword.lower() in str(cell_value).lower():
+                        found = True
+                        break
+
+                if found:
+                    # 빈 셀(None)은 빈 문자열로 변환하여 추가
+                    clean_row = ["" if cell is None else cell for cell in row]
+                    matching_rows.append(clean_row)
+
+        workbook.close()
+
+    except Exception as e:
+        # 파일 처리 중 오류 발생 시 예외 처리
+        raise HTTPException(status_code=400, detail=f"'master' 파일 처리 중 오류 발생: {e}")
+
+    return matching_rows
+
+
 def get_cell_styles(cell):
     """
     셀 객체에서 CSS 스타일 추출
@@ -77,31 +133,43 @@ def get_cell_styles(cell):
     return "".join(styles)
 
 
-@router.get("/search/", summary="key로 행 값 검색", response_class=HTMLResponse)
-async def search_rows_by_key(
+@router.get("/search/", summary="key 또는 signal로 행 검색", response_class=HTMLResponse)
+async def search_rows(
     request: Request,
-    key: int = Query(..., description="The integer value to search for")
+    key: str = Query(..., description="The value to search for (number or text)")
     ):
     """
-    두 개의 엑셀 파일을 업로드받아, 각 파일의 **두 번째 열**에서 주어진 `key` 값과
-    일치하는 모든 행을 찾아 반환합니다.
+    엑셀 파일에서 주어진 `key` 값으로 행을 검색합니다.
+    - 숫자만 입력된 경우: B열에서 정확히 일치하는 행 검색
+    - 문자가 포함된 경우: A, F, G, H, I열에서 키워드를 포함하는 행 검색
 
-    - **key**: 검색할 값 (예: 14)
-    - **file1**: 검색 대상 첫 번째 엑셀 파일
-    - **file2**: 검색 대상 두 번째 엑셀 파일
-    file1: UploadFile = File(..., description="첫 번째 엑셀 파일 (.xlsx)"),
-    file2: UploadFile = File(..., description="두 번째 엑셀 파일 (.xlsx)")
+    - **key**: 검색할 값 (예: 14 또는 "signal_name")
     """
-    # 각 파일에 대해 검색 함수 호출, 에러 발생 시 빈 리스트 반환
-    try:
-        r1_data = search_key_in_excel("ver1", key)
-    except HTTPException:
-        r1_data = []
+    # 입력값이 숫자인지 확인
+    is_numeric = key.isdigit()
 
-    try:
-        r2_data = search_key_in_excel("ver2", key)
-    except HTTPException:
-        r2_data = []
+    if is_numeric:
+        # 숫자인 경우: search_key_in_excel 사용 (B열에서 정확히 일치)
+        try:
+            r1_data = search_key_in_excel("ver1", key)
+        except HTTPException:
+            r1_data = []
+
+        try:
+            r2_data = search_key_in_excel("ver2", key)
+        except HTTPException:
+            r2_data = []
+    else:
+        # 문자가 포함된 경우: search_signal_in_excel 사용 (A, F, G, H, I열에서 키워드 검색)
+        try:
+            r1_data = search_signal_in_excel("ver1", key)
+        except HTTPException:
+            r1_data = []
+
+        try:
+            r2_data = search_signal_in_excel("ver2", key)
+        except HTTPException:
+            r2_data = []
 
     context = {
         "request": request,
