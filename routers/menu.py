@@ -37,6 +37,52 @@ async def get_user_info(request: Request):
         "name": user_name
     })
 
+@router.get("/api/user-agenda")
+async def get_user_agenda(request: Request):
+    """
+    Return user's agenda numbers (union of ver1 and ver2) based on client's IP address.
+    """
+    # Get client IP address
+    client_ip = request.client.host
+
+    # Get user name based on IP
+    user_name = get_user_name_by_ip(client_ip)
+
+    try:
+        # Load agenda_no.json
+        agenda_path = os.path.join(os.path.dirname(__file__), "..", "json", "agenda_no.json")
+
+        if os.path.exists(agenda_path):
+            with open(agenda_path, 'r', encoding='utf-8') as f:
+                agenda_data = json.load(f)
+        else:
+            return JSONResponse({
+                "user": user_name,
+                "agenda_numbers": []
+            })
+
+        # Get user's ver1 and ver2 lists
+        if user_name in agenda_data:
+            ver1 = agenda_data[user_name].get("ver1", [])
+            ver2 = agenda_data[user_name].get("ver2", [])
+
+            # Create union of ver1 and ver2, remove duplicates and sort
+            agenda_numbers = sorted(list(set(ver1 + ver2)))
+        else:
+            agenda_numbers = []
+
+        return JSONResponse({
+            "user": user_name,
+            "agenda_numbers": agenda_numbers
+        })
+
+    except Exception as e:
+        print(f"Error reading agenda_no.json: {e}")
+        return JSONResponse({
+            "user": user_name,
+            "agenda_numbers": []
+        })
+
 def match_agenda_user(filename: str, version: str, file_path: str, keywords: list):
     """
     Check if filename contains any keyword from the keywords list.

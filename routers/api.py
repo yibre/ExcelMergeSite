@@ -16,8 +16,8 @@ TEMPLATE_FILENAME = "template.xlsx"
 MASTER_MERGE_FILENAME = "master.xlsx"
 VERSIONS = ["ver1", "ver2"]
 FILE_OWNERSHIP_PATH = "json/file_ownership.json"
-# Keywords to match in uploaded result filenames for agenda tracking
-AGENDA_KEYWORDS = ["김철수", "이영희"]
+# Keywords to match in uploaded result filenames for agenda tracking 이름을 기반으로 아젠다 파일 내 번호 추적
+AGENDA_KEYWORDS = ["김철수", "이영희", "admin"]
 
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 for version in VERSIONS:

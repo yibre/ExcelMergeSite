@@ -4,13 +4,18 @@
     "master_ver1_251025_15시42분.xlsx": "233.12.1.10",
     "테스트용.xlsx": {
       "ip": "127.0.0.1",
-      "upload_date": "2026-01-12",
-      "upload_time": "21:33:46"
+      "upload_date": "2026-01-25",
+      "upload_time": "15:40:35"
     },
     "테스트용22.xlsx": {
       "ip": "127.0.0.1",
       "upload_date": "2026-01-12",
       "upload_time": "21:33:59"
+    },
+    "admin_252525_r2.xlsx": {
+      "ip": "127.0.0.1",
+      "upload_date": "2026-01-25",
+      "upload_time": "17:21:55"
     }
   },
   "ver2": {
